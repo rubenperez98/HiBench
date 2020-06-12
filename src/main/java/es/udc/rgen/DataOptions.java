@@ -152,14 +152,14 @@ public class DataOptions {
 				+ "[-b <base path>] [-n <data name>] "
 				+ "[-m <num maps>] [-r <num reduces>] "
 				+ "[-o sequence] [-c <codec>] "
-				+ "// [-d cdelim] [-pbalance]");
+				+ "[-d cdelim] [-pbalance]");
 		
 		System.out.println("generate -t nutch -p <pages> [-w <words>] "
 				+ "[-b <base path>] [-n <data name>] "
 				+ "[-m <num maps>] [-r <num reduces>] "
 				+ "[-o sequence] [-c <codec>]");
 		
-		System.out.println("generate -t bayes -p <pages> [-w <words>] -g <num classes> "
+		System.out.println("generate -t bayes -p <pages> -g <num classes> [-w <words>] "
 				+ "[-b <base path>] [-n <data name>] "
 				+ "[-m <num maps>] [-r <num reduces>] "
 				+ "[-o sequence] [-c <codec>]");

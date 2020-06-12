@@ -61,7 +61,7 @@ public class HiveData {
 			} else if ("-d".equals(args[i])) {
 				cdelim = args[++i];
 			} else {
-				DataOptions.printUsage("Unknown hive data arguments -- " + args[i] + "!!!");
+				DataOptions.printUsage("Unknown hive data arguments --> " + args[i] + " <--");
 			}
 		}
 		

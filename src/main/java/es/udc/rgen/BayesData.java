@@ -36,10 +36,10 @@ public class BayesData {
 	private void parseArgs(String[] args) {
 		
 		for (int i=0; i<args.length; i++) {
-			if ("-class".equals(args[i])) {
+			if ("-g".equals(args[i])) {
 				cgroups = Integer.parseInt(args[++i]);
 			} else {
-				DataOptions.printUsage("Unknown bayes data arguments -- " + args[i] + "!!!");
+				DataOptions.printUsage("Unknown bayes data arguments --> " + args[i] + " <--");
 				System.exit(-1);
 			}
 		}
