@@ -36,7 +36,7 @@ public class DataOptions {
 	DataOptions(String[] args) throws ClassNotFoundException {
 		
 		type = DataType.NONE;
-		base = "/es.udc.rgen";
+		base = "/tmp";
 		maps = -1;
 		reds = -1;
 		pages = -1;
@@ -89,7 +89,6 @@ public class DataOptions {
 						Class.forName(args[++i]).asSubclass(CompressionCodec.class);
 			} else {
 				remainArgs.append(args[i]).append(" ");
-				remainArgs.append(args[++i]).append(" ");
 			}
 		}
 		
@@ -98,7 +97,6 @@ public class DataOptions {
 		slotpages = (long) Math.ceil(pages * 1.0 / maps);
 
 		resultPath = new Path(base, dname);
-//		workPath = new Path(resultPath, TEMP_DIR);
 		workPath = new Path(base, TEMP_DIR);
 	}
 	
@@ -153,14 +151,15 @@ public class DataOptions {
 		System.out.println("generate -t pagerank -p <pages> "
 				+ "[-b <base path>] [-n <data name>] "
 				+ "[-m <num maps>] [-r <num reduces>] "
-				+ "[-o sequence] [-c <codec>]");
+				+ "[-o sequence] [-c <codec>] "
+				+ "// [-d cdelim] [-pbalance]");
 		
 		System.out.println("generate -t nutch -p <pages> [-w <words>] "
 				+ "[-b <base path>] [-n <data name>] "
 				+ "[-m <num maps>] [-r <num reduces>] "
 				+ "[-o sequence] [-c <codec>]");
 		
-		System.out.println("generate -t bayes -p <pages> [-w <words>] -g <num classes>"
+		System.out.println("generate -t bayes -p <pages> [-w <words>] -g <num classes> "
 				+ "[-b <base path>] [-n <data name>] "
 				+ "[-m <num maps>] [-r <num reduces>] "
 				+ "[-o sequence] [-c <codec>]");

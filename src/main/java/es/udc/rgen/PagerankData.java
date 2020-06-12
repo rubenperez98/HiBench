@@ -51,7 +51,7 @@ public class PagerankData {
 			} else if ("-pbalance".equals(args[i])) {
 				balance = true;
 			} else {
-				DataOptions.printUsage("Unknown pagerank data arguments -- " + args[i] + "!!!");
+				DataOptions.printUsage("Unknown pagerank data arguments --> " + args[i] + " <--");
 			}
 		}
 	}
