@@ -14,6 +14,11 @@ public class DataGen extends Configured implements Tool {
 
 		DataOptions options = new DataOptions(args);
 		switch (options.getType()) {
+			case RANDOMTEXT: {
+				RandomTextWriter data = new RandomTextWriter(getConf(),options);
+				data.generate();
+				break;
+			}
 			case HIVE: {
 				HiveData data = new HiveData (options);
 				data.generate();

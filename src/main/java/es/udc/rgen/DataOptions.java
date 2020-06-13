@@ -17,7 +17,7 @@ public class DataOptions {
 	private static final int NUM_LINUX_DICT_WORD = 479623;
 
 	public static enum DataType {
-		HIVE, PAGERANK, BAYES, NUTCH, NONE
+		HIVE, PAGERANK, BAYES, NUTCH, NONE, RANDOMTEXT
 	}
 	private DataType type;
 
@@ -53,6 +53,9 @@ public class DataOptions {
 			if ("hive".equalsIgnoreCase(args[1])) {
 				type = DataType.HIVE;
 				dname = "hive";
+			} else if ("randomtext".equalsIgnoreCase(args[1])) {
+				type = DataType.RANDOMTEXT;
+				dname = "randomtext";
 			} else if ("pagerank".equalsIgnoreCase(args[1])) {
 				type = DataType.PAGERANK;
 				dname = "pagerank";
@@ -108,6 +111,11 @@ public class DataOptions {
 				System.exit(printUsage("Error: pages of hive data should be larger than 0!!!"));
 			}
 			break;
+		case RANDOMTEXT:
+			if (pages<=0) {
+				System.exit(printUsage("Error: number of bytes of randomtext data should be larger than 0!!!"));
+			}
+			break;
 		case PAGERANK:
 			if (pages<=0) {
 				System.exit(printUsage("Error: pages of pagerank data should be larger than 0!!!"));
@@ -142,6 +150,10 @@ public class DataOptions {
 			System.out.println(msg);
 			System.out.println();
 		}
+		
+		System.out.println("generate -t randomtext -p <bytes> [-outFormat <class>] "
+				+ "[-b <base path>] [-n <data name>] "
+				+ "[-m <num maps>] [-r <num reduces>] ");
 		
 		System.out.println("generate -t hive -p <pages> -v <visits> "
 				+ "[-b <base path>] [-n <data name>] "
