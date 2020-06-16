@@ -5,6 +5,8 @@ import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
+import es.udc.rgen.tera.TeraGen;
+
 public class DataGen extends Configured implements Tool {
 
 	public static final boolean DEBUG_MODE = true;
@@ -16,6 +18,11 @@ public class DataGen extends Configured implements Tool {
 		switch (options.getType()) {
 			case RANDOMTEXT: {
 				RandomTextWriter data = new RandomTextWriter(getConf(),options);
+				data.generate();
+				break;
+			}
+			case TERAGEN: {
+				TeraGen data = new TeraGen(getConf(),options);
 				data.generate();
 				break;
 			}
