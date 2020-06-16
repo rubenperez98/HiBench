@@ -30,9 +30,8 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapred.ClusterStatus;
-import org.apache.hadoop.mapred.JobClient;
 import org.apache.hadoop.mapreduce.*;
+import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.util.Tool;
@@ -80,9 +79,9 @@ public class RandomTextWriter extends Configured {
 	
   private static final Log log = LogFactory.getLog(RandomTextWriter.class.getName());
 	
+  public static final String NUM_MAPS = "mapreduce.randomtextwriter.nummaps";
   public static final String TOTAL_BYTES = "mapreduce.randomtextwriter.totalbytes";
   public static final String BYTES_PER_MAP = "mapreduce.randomtextwriter.bytespermap";
-  public static final String MAPS_PER_HOST = "mapreduce.randomtextwriter.mapsperhost";
   public static final String MAX_VALUE = "mapreduce.randomtextwriter.maxwordsvalue";
   public static final String MIN_VALUE = "mapreduce.randomtextwriter.minwordsvalue";
   public static final String MIN_KEY = "mapreduce.randomtextwriter.minwordskey";
@@ -105,7 +104,10 @@ public class RandomTextWriter extends Configured {
 	    if ("-outFormat".equals(args[i])) {
 	      outputFormatClass = Class.forName(args[++i]).asSubclass(OutputFormat.class);
 	    } else {
-	      DataOptions.printUsage("Unknown randomtext data arguments --> " + args[i] + " <--");
+	      if (!"".equals(args[i])) {
+	    	  DataOptions.printUsage("Unknown randomtext data arguments --> " + args[i] + " <--");
+	      }
+	      
 	    }
 	  } catch (Exception e) {
 	    DataOptions.printUsage("Required valid parameter missing from --> " + args[i-1] + " <--");
@@ -125,7 +127,77 @@ public class RandomTextWriter extends Configured {
    * User counters
    */
   static enum Counters { RECORDS_WRITTEN, BYTES_WRITTEN }
+  
+  /**
+   * A custom input format that creates virtual inputs of a single string
+   * for each map.
+   */
+  static class RandomInputFormat extends InputFormat<Text, Text> {
 
+    /** 
+     * Generate the requested number of file splits, with the filename
+     * set to the filename of the output file.
+     */
+    public List<InputSplit> getSplits(JobContext job) throws IOException {
+      List<InputSplit> result = new ArrayList<InputSplit>();
+      Path outDir = FileOutputFormat.getOutputPath(job);
+      int numSplits = job.getConfiguration().getInt(NUM_MAPS, 5);
+      for(int i=0; i < numSplits; ++i) {
+        result.add(new FileSplit(new Path(outDir, "dummy-split-" + i), 0, 1, 
+                                  (String[])null));
+      }
+      return result;
+    }
+
+    /**
+     * Return a single record (filename, "") where the filename is taken from
+     * the file split.
+     */
+    static class RandomRecordReader extends RecordReader<Text, Text> {
+      Path name;
+      Text key = null;
+      Text value = new Text();
+      public RandomRecordReader(Path p) {
+        name = p;
+      }
+      
+      public void initialize(InputSplit split,
+                             TaskAttemptContext context)
+      throws IOException, InterruptedException {
+    	  
+      }
+      
+      public boolean nextKeyValue() {
+        if (name != null) {
+          key = new Text();
+          key.set(name.getName());
+          name = null;
+          return true;
+        }
+        return false;
+      }
+      
+      public Text getCurrentKey() {
+        return key;
+      }
+      
+      public Text getCurrentValue() {
+        return value;
+      }
+      
+      public void close() {}
+
+      public float getProgress() {
+        return 0.0f;
+      }
+    }
+
+    public RecordReader<Text, Text> createRecordReader(InputSplit split,
+        TaskAttemptContext context) throws IOException, InterruptedException {
+      return new RandomRecordReader(((FileSplit) split).getPath());
+    }
+  }
+  
   static class RandomTextMapper extends Mapper<Text, Text, Text, Text> {
     
     private long numBytesToWrite;
@@ -150,8 +222,7 @@ public class RandomTextWriter extends Configured {
     /**
      * Given an output filename, write a bunch of random records to it.
      */
-    public void map(Text key, Text value,
-                    Context context) throws IOException,InterruptedException {
+    public void map(Text key, Text value, Context context) throws IOException,InterruptedException {
       int itemCount = 0;
       while (numBytesToWrite > 0) {
         // Generate the key/value 
@@ -197,23 +268,26 @@ public class RandomTextWriter extends Configured {
    * 
    * @throws IOException 
    */
-  public int run() throws Exception {    
-    JobClient client = new JobClient(conf);
-    ClusterStatus cluster = client.getClusterStatus();
-    int numMapsPerHost = conf.getInt(MAPS_PER_HOST, 10);
-    long numBytesToWritePerMap = conf.getLong(BYTES_PER_MAP,1*1024*1024*1024);
-    if (numBytesToWritePerMap == 0) {
-      System.err.println("Cannot have " + BYTES_PER_MAP +" set to 0");
-      return -2;
+  public int run() throws Exception {
+    
+    long totalBytesToWrite = conf.getLong(TOTAL_BYTES, options.getNumPages());
+    if (totalBytesToWrite <=0 ) {
+    	//System.exit(printUsage("Error "));
+    	System.err.println("Error: number of bytes of randomtext data should be larger than 0!!!");
+        return -2;
     }
-    long totalBytesToWrite = conf.getLong(TOTAL_BYTES, 
-         numMapsPerHost*numBytesToWritePerMap*cluster.getTaskTrackers());
-    int numMaps = (int) (totalBytesToWrite / numBytesToWritePerMap);
-    if (numMaps == 0 && totalBytesToWrite > 0) {
-      numMaps = 1;
-      conf.setLong(BYTES_PER_MAP, totalBytesToWrite);
+    
+    //int numMaps = (int) conf.getLong(MRJobConfig.NUM_MAPS, options.getNumMaps());
+    int numMaps = (int) options.getNumMaps();
+    if (numMaps <= 0) {
+    	//System.exit(printUsage("Error "));
+    	System.err.println("Error: number of maps of randomtext data should be larger than 0!!!");
+        return -2;
     }
-    conf.setInt(MRJobConfig.NUM_MAPS, numMaps);
+    conf.setInt(NUM_MAPS, numMaps);
+    
+    int numBytesToWritePerMap = (int) (totalBytesToWrite / numMaps);
+    conf.setInt(BYTES_PER_MAP, numBytesToWritePerMap);
     
     Job job = Job.getInstance(conf);
     
@@ -223,41 +297,23 @@ public class RandomTextWriter extends Configured {
     job.setOutputKeyClass(Text.class);
     job.setOutputValueClass(Text.class);
     
-    job.setInputFormatClass(RandomWriter.RandomInputFormat.class);
-    job.setMapperClass(RandomTextMapper.class);        
-    
-    Class<? extends OutputFormat> outputFormatClass = 
-      SequenceFileOutputFormat.class;
-    List<String> otherArgs = new ArrayList<String>();
-    for(int i=0; i < args.length; ++i) {
-      try {
-        if ("-outFormat".equals(args[i])) {
-          outputFormatClass = 
-            Class.forName(args[++i]).asSubclass(OutputFormat.class);
-        } else {
-          otherArgs.add(args[i]);
-        }
-      } catch (ArrayIndexOutOfBoundsException except) {
-        System.out.println("ERROR: Required parameter missing from " +
-            args[i-1]);
-        return printUsage(); // exits
-      }
-    }
+    job.setInputFormatClass(RandomTextWriter.RandomInputFormat.class);
+    job.setMapperClass(RandomTextMapper.class);
 
     job.setOutputFormatClass(outputFormatClass);
-    FileOutputFormat.setOutputPath(job, new Path(otherArgs.get(0)));
+    FileOutputFormat.setOutputPath(job, options.getResultPath());
     
-    System.out.println("Running " + numMaps + " maps.");
+    log.info("Running " + numMaps + " maps.");
     
     // reducer NONE
     job.setNumReduceTasks(0);
     
     Date startTime = new Date();
-    System.out.println("Job started: " + startTime);
+    log.info("Job started: " + startTime);
     int ret = job.waitForCompletion(true) ? 0 : 1;
     Date endTime = new Date();
-    System.out.println("Job ended: " + endTime);
-    System.out.println("The job took " + 
+    log.info("Job ended: " + endTime);
+    log.info("The job took " + 
                        (endTime.getTime() - startTime.getTime()) /1000 + 
                        " seconds.");
     

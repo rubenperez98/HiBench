@@ -106,14 +106,14 @@ public class DataOptions {
 	private void checkOptions() {
 		
 		switch (type) {
+		case RANDOMTEXT:
+			if (pages<=0) {
+				System.exit(printUsage("Error: number of bytes of ramdomtext data should be larger than 0!!!"));
+			}
+			break;
 		case HIVE:
 			if (pages<=0) {
 				System.exit(printUsage("Error: pages of hive data should be larger than 0!!!"));
-			}
-			break;
-		case RANDOMTEXT:
-			if (pages<=0) {
-				System.exit(printUsage("Error: number of bytes of randomtext data should be larger than 0!!!"));
 			}
 			break;
 		case PAGERANK:
@@ -153,7 +153,7 @@ public class DataOptions {
 		
 		System.out.println("generate -t randomtext -p <bytes> [-outFormat <class>] "
 				+ "[-b <base path>] [-n <data name>] "
-				+ "[-m <num maps>] [-r <num reduces>] ");
+				+ "[-m <num maps>]");
 		
 		System.out.println("generate -t hive -p <pages> -v <visits> "
 				+ "[-b <base path>] [-n <data name>] "
