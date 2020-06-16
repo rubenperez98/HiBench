@@ -17,7 +17,7 @@ public class DataOptions {
 	private static final int NUM_LINUX_DICT_WORD = 479623;
 
 	public static enum DataType {
-		HIVE, PAGERANK, BAYES, NUTCH, NONE, RANDOMTEXT
+		HIVE, PAGERANK, BAYES, NUTCH, NONE, RANDOMTEXT, TERAGEN
 	}
 	private DataType type;
 
@@ -56,6 +56,9 @@ public class DataOptions {
 			} else if ("randomtext".equalsIgnoreCase(args[1])) {
 				type = DataType.RANDOMTEXT;
 				dname = "randomtext";
+			} else if ("teragen".equalsIgnoreCase(args[1])) {
+				type = DataType.TERAGEN;
+				dname = "teragen";
 			} else if ("pagerank".equalsIgnoreCase(args[1])) {
 				type = DataType.PAGERANK;
 				dname = "pagerank";
@@ -78,7 +81,7 @@ public class DataOptions {
 			} else if ("-r".equals(args[i])) {
 				reds = Integer.parseInt(args[++i]);
 			} else if ("-p".equals(args[i])) {
-				pages = Long.parseLong(args[++i]);
+				pages = parseHumanLong(args[++i]);
 			} else if ("-b".equals(args[i])) {
 				base = args[++i];
 			} else if ("-n".equals(args[i])) {
@@ -103,12 +106,46 @@ public class DataOptions {
 		workPath = new Path(base, TEMP_DIR);
 	}
 	
+	/**
+	   * Parse a number that optionally has a postfix that denotes a base.
+	   * @param str an string integer with an option base {k,m,b,t}.
+	   * @return the expanded value
+	   */
+	  private long parseHumanLong(String str) {
+	    char tail = str.charAt(str.length() - 1);
+	    long base = 1;
+	    switch (tail) {
+	    case 't':
+		  base *= 1000 * 1000 * 1000 * 1000;
+		  break;
+		case 'b':
+		  base *= 1000 * 1000 * 1000;
+		  break;
+		case 'm':
+		  base *= 1000 * 1000;
+		  break;
+		case 'k':
+	      base *= 1000;
+	      break;
+	    default:
+	    }
+	    if (base != 1) {
+	      str = str.substring(0, str.length() - 1);
+	    }
+	    return Long.parseLong(str) * base;
+	  }
+	
 	private void checkOptions() {
 		
 		switch (type) {
 		case RANDOMTEXT:
 			if (pages<=0) {
 				System.exit(printUsage("Error: number of bytes of ramdomtext data should be larger than 0!!!"));
+			}
+			break;
+		case TERAGEN:
+			if (pages<=0) {
+				System.exit(printUsage("Error: number of rows of teragen data should be larger than 0!!!"));
 			}
 			break;
 		case HIVE:
@@ -152,6 +189,10 @@ public class DataOptions {
 		}
 		
 		System.out.println("generate -t randomtext -p <bytes> [-outFormat <class>] "
+				+ "[-b <base path>] [-n <data name>] "
+				+ "[-m <num maps>]");
+		
+		System.out.println("generate -t teragen -p <rows> "
 				+ "[-b <base path>] [-n <data name>] "
 				+ "[-m <num maps>]");
 		

@@ -115,14 +115,6 @@ public class RandomTextWriter extends Configured {
 	}
   }
   
-  static int printUsage() {
-    System.out.println("randomtextwriter " +
-                       "[-outFormat <output format class>] " + 
-                       "<output>");
-    ToolRunner.printGenericCommandUsage(System.out);
-    return 2;
-  }
-  
   /**
    * User counters
    */
@@ -141,7 +133,7 @@ public class RandomTextWriter extends Configured {
     public List<InputSplit> getSplits(JobContext job) throws IOException {
       List<InputSplit> result = new ArrayList<InputSplit>();
       Path outDir = FileOutputFormat.getOutputPath(job);
-      int numSplits = job.getConfiguration().getInt(NUM_MAPS, 5);
+      int numSplits = job.getConfiguration().getInt(NUM_MAPS, 1);
       for(int i=0; i < numSplits; ++i) {
         result.add(new FileSplit(new Path(outDir, "dummy-split-" + i), 0, 1, 
                                   (String[])null));
@@ -277,7 +269,6 @@ public class RandomTextWriter extends Configured {
         return -2;
     }
     
-    //int numMaps = (int) conf.getLong(MRJobConfig.NUM_MAPS, options.getNumMaps());
     int numMaps = (int) options.getNumMaps();
     if (numMaps <= 0) {
     	//System.exit(printUsage("Error "));
