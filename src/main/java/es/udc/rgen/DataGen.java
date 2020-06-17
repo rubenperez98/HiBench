@@ -26,6 +26,11 @@ public class DataGen extends Configured implements Tool {
 				data.generate();
 				break;
 			}
+			case KMEANS: {
+				KMeans data = new KMeans(getConf(),options);
+				data.generate();
+				break;
+			}
 			case HIVE: {
 				HiveData data = new HiveData (options);
 				data.generate();

@@ -15,8 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.mahout.clustering.kmeans;
-
+package es.udc.rgen;
 
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
@@ -27,9 +26,11 @@ import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.WritableComparable;
 import org.apache.hadoop.mapred.*;
+import org.apache.hadoop.mapreduce.OutputFormat;
 import org.apache.mahout.math.RandomAccessSparseVector;
 import org.apache.mahout.math.Vector;
 import org.apache.mahout.math.VectorWritable;
+import org.apache.mahout.clustering.kmeans.Kluster;
 import org.apache.mahout.common.distance.DistanceMeasure;
 import org.apache.mahout.common.distance.EuclideanDistanceMeasure;
 
@@ -51,12 +52,10 @@ import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
-//import org.apache.mahout.common.AbstractJob;
 
-public class GenKMeansDataset extends Configured implements Tool {
-//public class GenKMeansDataset extends AbstractJob {
+public class KMeans extends Configured {
 
-    private static final Log LOG = LogFactory.getLog(GenKMeansDataset.class);
+	private static final Log log = LogFactory.getLog(KMeans.class.getName());
 
     private static long SAMPLES_PER_FILE = 20000000;
 
@@ -64,7 +63,9 @@ public class GenKMeansDataset extends Configured implements Tool {
     private static final String TEST_INPUT_PATH = TEST_BASE_PATH + "/input";
     private static final String TEST_INPUT_PATH_SAMPLES = TEST_INPUT_PATH + "/points";
     private static final String TEST_INPUT_PATH_INITCLUSTERS = TEST_INPUT_PATH + "/clusters";
-
+    
+    private DataOptions options;
+    private Configuration conf;
 
     public static final double[][] simple = {{1, 1}, {2, 1}, {1, 2},
             {2, 2}, {3, 3}, {4, 4}, {5, 4}, {4, 5}, {5, 5}};
@@ -72,6 +73,11 @@ public class GenKMeansDataset extends Configured implements Tool {
     public static List<Vector> samples;
 
     public static List<Vector> initialCentroids;
+    
+    KMeans(Configuration conf, DataOptions options){
+  	  this.conf=conf;
+  	  this.options=options;
+    }
 
     public static List<Vector> getPoints(double[][] raw) {
         List<Vector> points = new ArrayList<Vector>();
@@ -169,7 +175,7 @@ public class GenKMeansDataset extends Configured implements Tool {
 
         protected SequenceFile.Writer createNewFile(Path filepath, Class<? extends WritableComparable> keyClass, Class<? extends Writable> valueClass) throws IOException {
             SequenceFile.Writer writer = new SequenceFile.Writer(getFileSystem(), getJobConf(), filepath, keyClass, valueClass);
-            LOG.info("creating file " + filepath.toString());
+            log.info("creating file " + filepath.toString());
             return writer;
         }
 
@@ -230,7 +236,7 @@ public class GenKMeansDataset extends Configured implements Tool {
                     for (int d = 0; d < dimension; d++) {
                         double mean = Double.parseDouble(numbers[i++]);
                         double std = Double.parseDouble(numbers[i++]);
-                        LOG.info("dimension=" + d + ": mean=" + mean + ", std=" + std);
+                        log.info("dimension=" + d + ": mean=" + mean + ", std=" + std);
                         gg[d] = new GaussianGenerator(mean, std, rng);
                     }
 
@@ -247,7 +253,7 @@ public class GenKMeansDataset extends Configured implements Tool {
                                 8 + p.getNumNondefaultElements() * 8);
                     }
                 } catch (Exception e) {
-                    LOG.warn("Exception in GussianSampleGenerator.MapClass");
+                    log.warn("Exception in GussianSampleGenerator.MapClass");
                     e.printStackTrace();
                 }
             }
@@ -274,7 +280,7 @@ public class GenKMeansDataset extends Configured implements Tool {
             long numTotal = this.numSamples;
             int centriodNum = genParams.length;
             int numPerCluster = (int) Math.ceil((double) numTotal / (double) centriodNum);
-            LOG.info("Cluster number=" + centriodNum + " numbers per cluster=" + numPerCluster);
+            log.info("Cluster number=" + centriodNum + " numbers per cluster=" + numPerCluster);
             GaussianGenerator[] gg = new GaussianGenerator[dimension];
             for (int k = 0; k < genParams.length; k++) {
                 if (genParams[k].length != dimension)
@@ -332,7 +338,7 @@ public class GenKMeansDataset extends Configured implements Tool {
         public long produceSamples(Path samplePath, boolean textOutput) throws Exception {
             Path input = new Path(samplePath.toString() + "-seeds");
             this.numSamples = writeSeeds(input);
-            LOG.info("Generating " + this.numSamples + " of samples");
+            log.info("Generating " + this.numSamples + " of samples");
 
             JobConf jobConf = getJobConf();
             jobConf.set("genkmeansdataset.dimensions", Integer.toString(dimension));
@@ -398,10 +404,10 @@ public class GenKMeansDataset extends Configured implements Tool {
 
             BufferedReader in = new BufferedReader(new FileReader(dataFile));
             String header = in.readLine();
-            LOG.info("dataset file features :" + header);
+            log.info("dataset file features :" + header);
             String[] h = header.split(",");
             //filter out the caseid
-            LOG.info("dataset dimension = " + String.valueOf(h.length - 1));
+            log.info("dataset dimension = " + String.valueOf(h.length - 1));
             this.dimension = h.length - 1;
 
             long sampleNum = 0;
@@ -429,11 +435,11 @@ public class GenKMeansDataset extends Configured implements Tool {
                 }
                 out.append(new LongWritable(samplesInCurrFile++), new VectorWritable(p));
                 sampleNum++;
-                //LOG.info("writing sample "+samplesInCurrFile);
+                //log.info("writing sample "+samplesInCurrFile);
             }
             out.close();
             in.close();
-            LOG.info("Parsed " + String.valueOf(sampleNum) + " samples totally.");
+            log.info("Parsed " + String.valueOf(sampleNum) + " samples totally.");
             this.numSamples = sampleNum;
             return this.numSamples;
         }
@@ -465,7 +471,7 @@ public class GenKMeansDataset extends Configured implements Tool {
                 if (indexes.size() == 0) break;
                 for (int i = 0; i < indexes.size(); i++) {
                     if (line == indexes.get(i)) {
-                        LOG.info("found line " + String.valueOf(line));
+                        log.info("found line " + String.valueOf(line));
                         String[] elements = s.split(",");
                         for (int d = 0; d < dimension; d++) {
                             vec[d] = Double.parseDouble(elements[d + 1]);
@@ -480,9 +486,9 @@ public class GenKMeansDataset extends Configured implements Tool {
             }
             in.close();
             //dump centroids
-            LOG.info("Dumping " + iCentroids.size() + " centroids..");
+            log.info("Dumping " + iCentroids.size() + " centroids..");
             for (int i = 0; i < iCentroids.size(); i++) {
-                LOG.info("Centroid :" + (iCentroids.get(i).asFormatString()));
+                log.info("Centroid :" + (iCentroids.get(i).asFormatString()));
             }
             return iCentroids.size();
         }
@@ -504,13 +510,6 @@ public class GenKMeansDataset extends Configured implements Tool {
         String compressType = "BLOCK";
         boolean textOutput = false;
 
-        String welcomeMsg = "Generating Mahout KMeans Input Dataset";
-        String usage = "Usage: org.apache.mahout.clustering.kmeans.GenKMeansDataset -sampleDir sampleDirectory -clusterDir centroidDirectory -numClusters numberofClusters -numSamples numberOfSamples -samplesPerFile numberOfSamplesPerFile -sampleDimension dimensionOfEachSample [ -centroidMin minValueOfEachDimensionForCenters -centroidMax maxValueOfEachDimensionForCenters -stdMin minStandardDeviationOfClusters -stdMax maxStandardDeviationOfClusters -maxIteration maxIter (The samples are generated using Gaussian Distribution around a set of centers which are also generated using UniformDistribution) -textOutput (Output text result instead of mahout vector)";
-        System.out.println(welcomeMsg);
-        if (args.length == 0) {
-            System.err.println(usage);
-            System.exit(-1);
-        }
         for (int i = 0; i < args.length; i++) {
             if (args[i].startsWith("-numSamples")) {
                 numSamples = Long.parseLong(args[++i]);
@@ -544,7 +543,7 @@ public class GenKMeansDataset extends Configured implements Tool {
             } else if (args[i].startsWith("-textOutput")) {
                 textOutput = true;
             } else {
-                LOG.warn("Illegal format for parameter : " + args[i]);
+                log.warn("Illegal format for parameter : " + args[i]);
             }
         }
 
@@ -552,7 +551,7 @@ public class GenKMeansDataset extends Configured implements Tool {
 
         //if no dataset input, use random generator
         if (datasetFile.equals("")) {
-            LOG.info("KMeans Clustering Input Dataset : Synthetic");
+            log.info("KMeans Clustering Input Dataset : Synthetic");
             GaussianSampleGenerator gsg = new GaussianSampleGenerator();
             MersenneTwisterRNG rng = new MersenneTwisterRNG();
             ContinuousUniformGenerator ug = new ContinuousUniformGenerator(meanMin, meanMax, rng);
@@ -567,8 +566,8 @@ public class GenKMeansDataset extends Configured implements Tool {
                 }
             }
 
-            LOG.info("Successfully generated Sample Generator Seeds");
-            LOG.info("samples seeds are: ");
+            log.info("Successfully generated Sample Generator Seeds");
+            log.info("samples seeds are: ");
             for (int k = 0; k < numClusters; k++) {
                 StringBuffer vec = new StringBuffer("(");
                 for (int d = 0; d < dimension; d++) {
@@ -580,7 +579,7 @@ public class GenKMeansDataset extends Configured implements Tool {
                     vecStd.append(genParams[k][d][1] + ",");
                 }
                 vecStd.setCharAt(vecStd.length() - 1, ')');
-                LOG.info("mean: " + vec.toString() + " std: " + vecStd.toString());
+                log.info("mean: " + vec.toString() + " std: " + vecStd.toString());
             }
             gsg.setGenParams(numSamples, dimension, genParams, meanMin, meanMax);
 
@@ -588,40 +587,46 @@ public class GenKMeansDataset extends Configured implements Tool {
 
         } else {
 
-            LOG.info("KMeans Clustering Input Dataset : from file " + datasetFile);
+            log.info("KMeans Clustering Input Dataset : from file " + datasetFile);
             // if dataset file is provided, use dataset file as input
             initialCentroids = new ArrayList<Vector>(numClusters);
             DatasetSampleReader dp = new DatasetSampleReader(datasetFile);
             sp = dp;
         }
 
-        JobConf jobConf = new JobConf(getConf(), GenKMeansDataset.class);
+        JobConf jobConf = new JobConf(conf, KMeans.class);
         jobConf.set("mapred.output.compress", compress);
         jobConf.set("mapred.output.compression.type", compressType);
         jobConf.set("mapred.output.compression.codec", compressCodec);
-        LOG.info("mapred.output.compression.codec=" + jobConf.get("mapred.output.compression.codec"));
+        log.info("mapred.output.compression.codec=" + jobConf.get("mapred.output.compression.codec"));
         FileSystem fs = FileSystem.get(new Path(sampleDir).toUri(), jobConf);
 
         sp.setFileSystem(fs, jobConf);
 
-        LOG.info("Generate K-Means input Dataset : samples = " + numSamples + "sample dimension" + dimension + " cluster num =" + numClusters);
+        log.info("Generate K-Means input Dataset : samples = " + numSamples + "sample dimension" + dimension + " cluster num =" + numClusters);
 
         //delete input and output directory
         fs.delete(new Path(sampleDir));
-        LOG.info("Start producing samples...");
+        log.info("Start producing samples...");
         long sampleNum = sp.produceSamples(new Path(sampleDir), textOutput);
-        LOG.info("Finished producing samples");
+        log.info("Finished producing samples");
         // pick k initial cluster centers at random
         fs.delete(new Path(clusterDir));
-        LOG.info("Start generating initial cluster centers ...");
+        log.info("Start generating initial cluster centers ...");
         sp.produceInitialCentroids(numClusters, new Path(clusterDir, "part-00000"));
-        LOG.info("Finished generating initial cluster centers");
+        log.info("Finished generating initial cluster centers");
         return 0;
     }
-
-    public static void main(String[] args) throws Exception {
-        int res = ToolRunner.run(new Configuration(), new GenKMeansDataset(), args);
-        System.exit(res);
-    }
+    
+    public void generate() throws Exception {
+	    log.info("Generating KMeans data files...");	
+		run(options.getRemainArgs());	
+		closeGenerator();
+	  }
+	  
+	  private void closeGenerator() throws IOException {
+		log.info("Closing KMeans data generator...");
+		Utils.checkHdfsPath(options.getWorkPath(), false);
+	  }
 }
 
