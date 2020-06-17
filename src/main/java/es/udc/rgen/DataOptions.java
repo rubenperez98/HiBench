@@ -17,7 +17,7 @@ public class DataOptions {
 	private static final int NUM_LINUX_DICT_WORD = 479623;
 
 	public static enum DataType {
-		HIVE, PAGERANK, BAYES, NUTCH, NONE, RANDOMTEXT, TERAGEN
+		HIVE, PAGERANK, BAYES, NUTCH, NONE, RANDOMTEXT, TERAGEN, KMEANS
 	}
 	private DataType type;
 
@@ -59,6 +59,9 @@ public class DataOptions {
 			} else if ("teragen".equalsIgnoreCase(args[1])) {
 				type = DataType.TERAGEN;
 				dname = "teragen";
+			} else if ("kmeans".equalsIgnoreCase(args[1])) {
+				type = DataType.KMEANS;
+				dname = "kmeans";
 			} else if ("pagerank".equalsIgnoreCase(args[1])) {
 				type = DataType.PAGERANK;
 				dname = "pagerank";
@@ -148,6 +151,11 @@ public class DataOptions {
 				System.exit(printUsage("Error: number of rows of teragen data should be larger than 0!!!"));
 			}
 			break;
+		case KMEANS:
+			if (remainArgs.length()==0) {
+				System.exit(printUsage("Error: number of arguments should be no less than 6 for KMeans!!!"));
+			}
+			break;
 		case HIVE:
 			if (pages<=0) {
 				System.exit(printUsage("Error: pages of hive data should be larger than 0!!!"));
@@ -188,34 +196,49 @@ public class DataOptions {
 			System.out.println();
 		}
 		
-		System.out.println("generate -t randomtext -p <bytes> [-outFormat <class>] "
-				+ "[-b <base path>] [-n <data name>] "
-				+ "[-m <num maps>]");
+		System.out.println("OPTIONS:");
 		
-		System.out.println("generate -t teragen -p <rows> "
+		System.out.println("RANDOM TEXT WRITER:");
+		System.out.println("-t randomtext -p <bytes> [-outFormat <class>] "
 				+ "[-b <base path>] [-n <data name>] "
-				+ "[-m <num maps>]");
+				+ "[-m <num maps>]\n");
 		
-		System.out.println("generate -t hive -p <pages> -v <visits> "
+		System.out.println("TERAGEN:");
+		System.out.println("-t teragen -p <rows> "
+				+ "[-b <base path>] [-n <data name>] "
+				+ "[-m <num maps>]\n");
+		
+		System.out.println("HIVE:");
+		System.out.println("-t hive -p <pages> -v <visits> "
 				+ "[-b <base path>] [-n <data name>] "
 				+ "[-m <num maps>] [-r <num reduces>] "
-				+ "[-o sequence] [-c <codec>] [-d <delimiter>]");
+				+ "[-o sequence] [-c <codec>] [-d <delimiter>]\n");
 		
-		System.out.println("generate -t pagerank -p <pages> "
+		System.out.println("PAGERANK:");
+		System.out.println("-t pagerank -p <pages> "
 				+ "[-b <base path>] [-n <data name>] "
 				+ "[-m <num maps>] [-r <num reduces>] "
 				+ "[-o sequence] [-c <codec>] "
-				+ "[-d cdelim] [-pbalance]");
+				+ "[-d cdelim] [-pbalance]\n");
 		
-		System.out.println("generate -t nutch -p <pages> [-w <words>] "
+		System.out.println("NUTCH:");
+		System.out.println("-t nutch -p <pages> [-w <words>] "
 				+ "[-b <base path>] [-n <data name>] "
 				+ "[-m <num maps>] [-r <num reduces>] "
-				+ "[-o sequence] [-c <codec>]");
+				+ "[-o sequence] [-c <codec>]\n");
 		
-		System.out.println("generate -t bayes -p <pages> -g <num classes> [-w <words>] "
+		System.out.println("BAYES:");
+		System.out.println("-t bayes -p <pages> -g <num classes> [-w <words>] "
 				+ "[-b <base path>] [-n <data name>] "
 				+ "[-m <num maps>] [-r <num reduces>] "
-				+ "[-o sequence] [-c <codec>]");
+				+ "[-o sequence] [-c <codec>]\n");
+		
+        System.out.println("KMEANS:");
+        System.out.println("-t kmeans -sampleDir <sampleDirectory> -clusterDir <centroidDirectory> -numClusters <numberofClusters> -numSamples <numberOfSamples> \n"
+        		+ "-samplesPerFile <numberOfSamplesPerFile> -sampleDimension <dimensionOfEachSample> [-centroidMin <minValueOfEachDimensionForCenters>] \n"
+        		+ "[-centroidMax <maxValueOfEachDimensionForCenters>] [-stdMin <minStandardDeviationOfClusters>] [-stdMax <maxStandardDeviationOfClusters>] \n"
+        		+ "[-maxIteration <maxIter> (The samples are generated using Gaussian Distribution around a set of centers which are also generated using UniformDistribution)] \n"
+        		+ "[-textOutput (Output text result instead of mahout vector)]");
 		
 		return -1;
 	}
