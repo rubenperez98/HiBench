@@ -17,7 +17,7 @@ public class DataOptions {
 	private static final int NUM_LINUX_DICT_WORD = 479623;
 
 	public static enum DataType {
-		HIVE, PAGERANK, BAYES, NUTCH, NONE, RANDOMTEXT, TERAGEN, KMEANS
+		HIVE, PAGERANK, BAYES, NUTCH, NONE, RANDOMTEXT, TERAGEN, KMEANS, KRONECKER
 	}
 	private DataType type;
 
@@ -65,6 +65,9 @@ public class DataOptions {
 			} else if ("pagerank".equalsIgnoreCase(args[1])) {
 				type = DataType.PAGERANK;
 				dname = "pagerank";
+			} else if ("kronecker".equalsIgnoreCase(args[1])) {
+				type = DataType.KRONECKER;
+				dname = "kronecker";
 			} else if ("bayes".equalsIgnoreCase(args[1])) {
 				type = DataType.BAYES;
 				words = NUM_LINUX_DICT_WORD;
@@ -96,7 +99,7 @@ public class DataOptions {
 			} else if ("-c".equals(args[i])) {
 				codecClass =
 						Class.forName(args[++i]).asSubclass(CompressionCodec.class);
-			} else {
+			} else if (args[i].length()>0) {
 				remainArgs.append(args[i]).append(" ");
 			}
 		}
@@ -166,6 +169,11 @@ public class DataOptions {
 				System.exit(printUsage("Error: pages of pagerank data should be larger than 0!!!"));
 			}
 			break;
+		case KRONECKER:
+			if (pages<=0) {
+				System.exit(printUsage("Error: pages of pagerank data should be larger than 0!!!"));
+			}
+			break;
 		case BAYES:
 			if (pages<=0 || words<=0) {
 				System.exit(printUsage("Error: pages/words of bayes data should be larger than 0!!!"));
@@ -208,6 +216,13 @@ public class DataOptions {
 				+ "[-b <base path>] [-n <data name>] "
 				+ "[-m <num maps>]\n");
 		
+		System.out.println("KRONECKER:");
+		System.out.println("-t kronecker -p <pages> "
+				+ "[-b <base path>] [-n <data name>] "
+				+ "[-m <num maps>] [-r <num reduces>] "
+				+ "[-o sequence] "
+				+ "[-d cdelim] [-pbalance]\n");
+		
 		System.out.println("HIVE:");
 		System.out.println("-t hive -p <pages> -v <visits> "
 				+ "[-b <base path>] [-n <data name>] "
@@ -244,7 +259,11 @@ public class DataOptions {
 	}
 	
 	public String[] getRemainArgs() {
-		return remainArgs.toString().trim().split(" ");
+		if (remainArgs.length()>0) {
+			return remainArgs.toString().trim().split(" ");
+		} else {
+			return new String[0];
+		}
 	}
 	
 	public DataType getType() {

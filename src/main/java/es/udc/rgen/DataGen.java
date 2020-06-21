@@ -41,6 +41,11 @@ public class DataGen extends Configured implements Tool {
 				data.generate();
 				break;
 			}
+			case KRONECKER: {
+				KroneckerGraph data = new KroneckerGraph(options);
+				data.generate();
+				break;
+			}
 			case BAYES: {
 				BayesData data = new BayesData(options);
 				data.generate();

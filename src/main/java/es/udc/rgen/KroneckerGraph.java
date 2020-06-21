@@ -6,6 +6,7 @@ import java.util.Iterator;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.NullWritable;
@@ -23,21 +24,26 @@ import org.apache.hadoop.mapred.SequenceFileOutputFormat;
 import org.apache.hadoop.mapred.TextOutputFormat;
 import org.apache.hadoop.mapred.lib.NLineInputFormat;
 
-public class PagerankData {
+public class KroneckerGraph {
 
-	private static final Log log = LogFactory.getLog(PagerankData.class.getName());
+	private static final Log log = LogFactory.getLog(KroneckerGraph.class.getName());
+	
+	public static final String NUM_MAPS = "mapreduce.kroneckergraph.nummaps";
+	public static final String NODES_PER_MAP = "mapreduce.kroneckergraph.nodesmap";
+	public static final String NUM_NODES = "mapreduce.kroneckergraph.nodes";
 	
 	private DataOptions options;
 
 	private static final String NODES_DIR_NAME = "nodes";
 	private static final String EDGES_DIR_NAME = "edges";	
-	private boolean balance = false;  //	original PAGERANK_NODE_BALANCE
+	private boolean balance = false;
 
 	private String cdelim = "\t";
+	private int iterations = 1;
 
 	private Dummy dummy;
 
-	PagerankData(DataOptions options) {
+	KroneckerGraph(DataOptions options) {
 		this.options = options;
 		parseArgs(options.getRemainArgs());
 	}
@@ -50,38 +56,38 @@ public class PagerankData {
 				cdelim = args[++i];
 			} else if ("-pbalance".equals(args[i])) {
 				balance = true;
+			} else if ("-k".equals(args[i])) {
+				iterations = Integer.parseInt(args[++i]);
 			} else {
-				DataOptions.printUsage("Unknown pagerank data arguments --> " + args[i] + " <--");
+				DataOptions.printUsage("Unknown Kronecker-graph data arguments --> " + args[i] + " <--");
 			}
 		}
+		
+		
 	}
 	
 	public void init() throws IOException {
 		
-		log.info("Initializing PageRank data generator...");
+		log.info("Initializing Kronecker-graph data generator...");
 		
 		Utils.checkHdfsPath(options.getResultPath(), true);
 		Utils.checkHdfsPath(options.getWorkPath(), true);
 
-		Utils.serialLinkZipf(options);
-
 		dummy = new Dummy(options.getWorkPath(), options.getNumMaps());
 	}
 
-	private void setPageRankNodesOptions(JobConf job) {
-		job.setLong("pages", options.getNumPages());
-		job.setLong("slotpages", options.getNumSlotPages());
+	private void setKroneckerNodesOptions(JobConf job) {
+		job.setLong(NUM_NODES, options.getNumPages());
+		job.setLong(NODES_PER_MAP, options.getNumSlotPages());
 	}
 	
 	private void setPageRankLinksOptions(JobConf job) throws URISyntaxException {
 		job.setLong("pages", options.getNumPages());
 		job.setLong("slotpages", options.getNumSlotPages());
 		job.set("delimiter", cdelim);
-		
-		Utils.shareLinkZipfCore(options, job);
 	}
 	
-	public static class BalancedLinkNodesMapper extends MapReduceBase implements
+	/*public static class BalancedLinkNodesMapper extends MapReduceBase implements
 	Mapper<LongWritable, Text, LongWritable, NullWritable> {
 
 		@Override
@@ -108,7 +114,7 @@ public class PagerankData {
 	
 			output.collect(NullWritable.get(), new Text(key.toString()));
 		}
-	}
+	}*/
 
 	public static class DummyToNodesMapper extends MapReduceBase implements
 	Mapper<LongWritable, Text, LongWritable, Text> {
@@ -116,8 +122,8 @@ public class PagerankData {
 		private long pages, slotpages;
 
 		private void getOptions(JobConf job) {
-			pages = job.getLong("pages", 0);
-			slotpages = job.getLong("slotpages", 0);
+			pages = job.getLong(NUM_NODES, 0);
+			slotpages = job.getLong(NODES_PER_MAP, 0);
 		}
 
 		@Override
@@ -136,22 +142,21 @@ public class PagerankData {
 				key.set(i);
 				Text v = new Text(Long.toString(i));
 				output.collect(key, v);
-				reporter.incrCounter(es.udc.rgen.Counters.BYTES_DATA_GENERATED, 8+v.getLength());
 			}
 		}
 	}
 
-	private void createPageRankNodesDirectly() throws IOException {
+	private void createKroneckerNodes() throws IOException {
 
-		log.info("Creating Pagerank nodes...", null);
+		log.info("Creating PageRank nodes...", null);
 
 		Path fout = new Path(options.getResultPath(), NODES_DIR_NAME);
 		
 		JobConf job = new JobConf(PagerankData.class);
-		String jobname = "Create pagerank nodes";
+		String jobname = "Create Kronecker-graph nodes";
 
 		job.setJobName(jobname);
-		setPageRankNodesOptions(job);
+		setKroneckerNodesOptions(job);
 
 		job.setOutputKeyClass(LongWritable.class);
 		job.setOutputValueClass(Text.class);
@@ -160,7 +165,7 @@ public class PagerankData {
 		job.setInputFormat(NLineInputFormat.class);
 		
 		if (balance) {
-			job.setMapOutputKeyClass(LongWritable.class);
+			/*job.setMapOutputKeyClass(LongWritable.class);
 			job.setMapOutputValueClass(NullWritable.class);
 			
 			job.setMapperClass(BalancedLinkNodesMapper.class);
@@ -171,14 +176,14 @@ public class PagerankData {
 				job.setNumReduceTasks(options.getNumReds());
 			} else {
 				job.setNumReduceTasks(Utils.getMaxNumReds());
-			}
+			}*/
 		} else {
 			job.setMapOutputKeyClass(Text.class);
 			job.setMapperClass(DummyToNodesMapper.class);
 			job.setNumReduceTasks(0);
 		}
 
-		if (options.isSequenceOut()) {
+		/*if (options.isSequenceOut()) {
 			job.setOutputFormat(SequenceFileOutputFormat.class);
 		} else {
 			job.setOutputFormat(TextOutputFormat.class);
@@ -189,13 +194,13 @@ public class PagerankData {
 			job.set("mapreduce.output.fileoutputformat.compress.type","BLOCK");
 			FileOutputFormat.setCompressOutput(job, true);
 			FileOutputFormat.setOutputCompressorClass(job, options.getCodecClass());
-		}
+		}*/
 		
 		FileOutputFormat.setOutputPath(job, fout);
 
 		log.info("Running Job: " +jobname);
 		log.info("Dummy file " + dummy.getPath() + " as input");
-		log.info("Nodes file " + fout + " as output");
+		log.info("Vertices file " + fout + " as output");
 		JobClient.runJob(job);
 		log.info("Finished Running Job: " + jobname);
 	}
@@ -255,7 +260,7 @@ public class PagerankData {
 		}
 	}
 
-	private void createPageRankLinksDirectly() throws IOException, URISyntaxException {
+	private void createKroneckerLinks() throws IOException, URISyntaxException {
 
 		log.info("Creating PageRank links", null);
 
@@ -303,16 +308,16 @@ public class PagerankData {
 
 	public void generate() throws IOException, URISyntaxException {
 		
-		log.info("Generating pageRank data files...");
+		log.info("Generating Kronecker-graph data files...");
 		init();
-		createPageRankNodesDirectly();
-		createPageRankLinksDirectly();
+		createKroneckerNodes();
+		/*createKroneckerLinks();*/
 		closeGenerator();
 	}
 
 	private void closeGenerator() throws IOException {
 
-		log.info("Closing pagerank data generator...");
+		log.info("Closing Kronecker-graph generator...");
 		Utils.checkHdfsPath(options.getWorkPath(), true);
 	}
 }
