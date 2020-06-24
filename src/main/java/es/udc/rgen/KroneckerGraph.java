@@ -70,6 +70,8 @@ public class KroneckerGraph {
 				cdelim = args[++i];
 			} else if ("-pbalance".equals(args[i])) {
 				balance = true;
+			} else if ("-sm".equals(args[i])) {
+				parseMatrix(args[++i]);
 			} else if ("-k".equals(args[i])) {
 				k = Integer.parseInt(args[++i]);
 			} else if ("-s".equals(args[i])) {
@@ -80,6 +82,33 @@ public class KroneckerGraph {
 			}
 		}
 
+	}
+	
+	public void parseMatrix(String args) {
+		String[] rows = args.substring(1, args.length()-1).split(":");
+		double[][] auxSeedMatrix = new double[rows.length][rows.length];
+		for (int i=0;i<rows.length;i++) {
+			String[] parsedRows = rows[i].split(",");
+			for (int j=0;j<parsedRows.length;j++) {
+				auxSeedMatrix[i][j]=Double.parseDouble(parsedRows[j]);
+			}
+		}
+		seedMatrix = auxSeedMatrix;
+	}
+	
+	public StringBuffer dumpSeedMatrix() {
+		StringBuffer dump = new StringBuffer("[");
+		for (int i=0;i<seedMatrix.length;i++) {
+			for (int j=0;j<seedMatrix[i].length;j++) {
+				dump.append(seedMatrix[i][j]).append(" ");
+			}
+			if (i<seedMatrix.length-1) {
+				dump.append(":");
+			} else {
+				dump.append("]");
+			}
+		}
+		return dump;
 	}
 	
 	public void init() throws IOException {
@@ -219,8 +248,6 @@ public class KroneckerGraph {
 				
 				Cell cell = new Cell(0,row,col);
 				
-				//key.set(row);
-				//Text v = new Text("<"+row+","+col+">");
 				output.collect(cell, new IntWritable(1));
 			}
 		}
@@ -264,10 +291,11 @@ public class KroneckerGraph {
 			job.setOutputFormat(TextOutputFormat.class);
 		}
 		FileOutputFormat.setOutputPath(job, fout);
-		
-		log.info("Nodes will be created: "+job.get(NUM_NODES), null);
-		log.info("Edges will be created: "+job.get(NUM_EDGES), null);
 
+		log.info("Nodes will be created: "+job.get(NUM_NODES), null);
+		log.info("Nodes per map: "+job.get(NODES_PER_MAP), null);
+		log.info("K iterations: "+job.get(ITERATIONS),null);
+		
 		log.info("Running Job: " +jobname);
 		log.info("Dummy file " + dummy.getPath() + " as input");
 		log.info("Vertices file " + fout + " as output");
@@ -313,8 +341,12 @@ public class KroneckerGraph {
 		
 		FileOutputFormat.setOutputPath(job, fout);
 		
-		log.info("Nodes will be created: "+job.get(NUM_NODES), null);
+		log.info("Nodes created: "+job.get(NUM_NODES), null);
 		log.info("Edges will be created: "+job.get(NUM_EDGES), null);
+		log.info("Edges per map: "+job.get(EDGES_PER_MAP), null);
+		log.info("K iterations: "+job.get(ITERATIONS),null);
+		log.info("Seed matrix: "+dumpSeedMatrix(),null);
+		
 		
 		log.info("Running Job: " +jobname);
 		log.info("Dummy file " + dummy.getPath() + " as input");

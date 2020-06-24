@@ -217,11 +217,12 @@ public class DataOptions {
 				+ "[-m <num maps>]\n");
 		
 		System.out.println("KRONECKER:");
-		System.out.println("-t kronecker -k <iterations> [-s <seed>] "
+		System.out.println("-t kronecker -k <iterations> "
+				+ "[-sm <seed matrix ([value11,value12;value21,value22])>] [-s <seed>] "
 				+ "[-b <base path>] [-n <data name>] "
 				+ "[-m <num maps>] [-r <num reduces>] "
 				+ "[-o sequence] "
-				+ "[-d cdelim] [-pbalance]\n");
+				+ "[-d cdelim]\n");
 		
 		System.out.println("HIVE:");
 		System.out.println("-t hive -p <pages> -v <visits> "
