@@ -170,8 +170,8 @@ public class DataOptions {
 			}
 			break;
 		case KRONECKER:
-			if (pages<=0) {
-				System.exit(printUsage("Error: pages of pagerank data should be larger than 0!!!"));
+			if (remainArgs.length()==0) {
+				System.exit(printUsage("Error: number of arguments should be no less than 1 for Kronecker!!!"));
 			}
 			break;
 		case BAYES:
@@ -217,7 +217,7 @@ public class DataOptions {
 				+ "[-m <num maps>]\n");
 		
 		System.out.println("KRONECKER:");
-		System.out.println("-t kronecker -p <pages> "
+		System.out.println("-t kronecker -k <iterations> [-s <seed>] "
 				+ "[-b <base path>] [-n <data name>] "
 				+ "[-m <num maps>] [-r <num reduces>] "
 				+ "[-o sequence] "

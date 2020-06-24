@@ -3,13 +3,13 @@ package es.udc.rgen;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.Iterator;
+import java.util.Random;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapred.FileInputFormat;
 import org.apache.hadoop.mapred.FileOutputFormat;
@@ -30,7 +30,11 @@ public class KroneckerGraph {
 	
 	public static final String NUM_MAPS = "mapreduce.kroneckergraph.nummaps";
 	public static final String NODES_PER_MAP = "mapreduce.kroneckergraph.nodesmap";
+	public static final String EDGES_PER_MAP = "mapreduce.kroneckergraph.edgesmap";
 	public static final String NUM_NODES = "mapreduce.kroneckergraph.nodes";
+	public static final String NUM_EDGES = "mapreduce.kroneckergraph.edges";
+	public static final String DELIMETER = "mapreduce.output.textoutputformat.separator";
+	public static final String ITERATIONS = "mapreduce.kroneckergraph.k";
 	
 	private DataOptions options;
 
@@ -39,11 +43,21 @@ public class KroneckerGraph {
 	private boolean balance = false;
 
 	private String cdelim = "\t";
-	private int iterations = 1;
+	private int k = 1;
+	private int nodes = 0;
+	private int edges = 0;
+	private double sumProbSeedMatrix = 0;
+	
+	// Facebook graph seed matrix
+    private static double[][] seedMatrix = {{0.9999 , 0.5887},{0.6254 , 0.3676}};
+	
+	private static Cell probMatrix[];
+	
+	private static Random random = new Random(System.currentTimeMillis());
 
 	private Dummy dummy;
 
-	KroneckerGraph(DataOptions options) {
+	KroneckerGraph (DataOptions options) {
 		this.options = options;
 		parseArgs(options.getRemainArgs());
 	}
@@ -57,13 +71,15 @@ public class KroneckerGraph {
 			} else if ("-pbalance".equals(args[i])) {
 				balance = true;
 			} else if ("-k".equals(args[i])) {
-				iterations = Integer.parseInt(args[++i]);
+				k = Integer.parseInt(args[++i]);
+			} else if ("-s".equals(args[i])) {
+				int seed = Integer.parseInt(args[++i]);
+				random  = new Random(seed);
 			} else {
 				DataOptions.printUsage("Unknown Kronecker-graph data arguments --> " + args[i] + " <--");
 			}
 		}
-		
-		
+
 	}
 	
 	public void init() throws IOException {
@@ -77,53 +93,69 @@ public class KroneckerGraph {
 	}
 
 	private void setKroneckerNodesOptions(JobConf job) {
-		job.setLong(NUM_NODES, options.getNumPages());
-		job.setLong(NODES_PER_MAP, options.getNumSlotPages());
-	}
-	
-	private void setPageRankLinksOptions(JobConf job) throws URISyntaxException {
-		job.setLong("pages", options.getNumPages());
-		job.setLong("slotpages", options.getNumSlotPages());
-		job.set("delimiter", cdelim);
-	}
-	
-	/*public static class BalancedLinkNodesMapper extends MapReduceBase implements
-	Mapper<LongWritable, Text, LongWritable, NullWritable> {
-
-		@Override
-		public void map(LongWritable key, Text value,
-				OutputCollector<LongWritable, NullWritable> output, Reporter reporter) throws IOException {
-	
-			String delimiter = "[ \t]";
-			String[] pair = value.toString().split(delimiter);
-			
-			output.collect(
-					new LongWritable(Long.parseLong(pair[0])),
-					NullWritable.get()
-					);
+		nodes = (int) Math.ceil(Math.pow(seedMatrix.length,k));
+		
+		double sum = 0;
+		for (int i = 0;i<seedMatrix.length;i++) {
+			for (int j=0;j<seedMatrix[i].length;j++) {
+				sum += seedMatrix[i][j];
+			}
 		}
+		sumProbSeedMatrix = sum;
+		
+		edges = (int) Math.ceil(Math.pow(sum,k));
+		
+		job.setInt(NUM_NODES, nodes);
+		job.setInt(NUM_EDGES, edges);
+		
+		int nodes_map = (int) Math.ceil(nodes * 1.0 / options.getNumMaps());
+		job.setInt(NODES_PER_MAP, nodes_map);
 	}
-
-	public static class BalancedLinkNodesReducer extends MapReduceBase implements
-	Reducer<LongWritable, NullWritable, NullWritable, Text> {
-
-		@Override
-		public void reduce(LongWritable key, Iterator<NullWritable> values,
-				OutputCollector<NullWritable, Text> output, Reporter reporter)
-						throws IOException {
 	
-			output.collect(NullWritable.get(), new Text(key.toString()));
+	private void setKroneckerEdgesOptions(JobConf job) throws URISyntaxException {
+		probMatrix=new Cell[(int) Math.pow(seedMatrix.length,2)];
+		double cumProb = 0.0;
+		int i = 0;
+		for (int r=0;r<seedMatrix.length;r++) {
+			for (int c=0;c<seedMatrix[r].length;c++) {
+				double prob = seedMatrix[r][c];
+				if (prob > 0.0) {
+					cumProb += prob;
+					probMatrix[i]=new Cell(cumProb/sumProbSeedMatrix,r,c);
+					i++;
+				}
+			}
 		}
-	}*/
+		
+		job.setInt(NUM_NODES, nodes);
+		job.setInt(NUM_EDGES, edges);
+		
+		int edges_map = (int) Math.ceil(edges * 1.0 / options.getNumMaps());
+		job.setInt(EDGES_PER_MAP, edges_map);
+		
+		job.set(DELIMETER, cdelim);
+		
+		job.setInt(ITERATIONS, k);
+	}
+	
+	public static int[] getRange(int slotId, int limit, int slotlimit) {
+		int[] range = new int[2];
+		range[0] = slotlimit * (slotId - 1);
+		range[1] = range[0] + slotlimit;
+		if (range[1] > limit) {
+			range[1] = limit;
+		}
+		return range;
+	}
 
 	public static class DummyToNodesMapper extends MapReduceBase implements
 	Mapper<LongWritable, Text, LongWritable, Text> {
 		
-		private long pages, slotpages;
+		private int nodes, nodes_map;
 
 		private void getOptions(JobConf job) {
-			pages = job.getLong(NUM_NODES, 0);
-			slotpages = job.getLong(NODES_PER_MAP, 0);
+			nodes = job.getInt(NUM_NODES, 0);
+			nodes_map = job.getInt(NODES_PER_MAP, 0);
 		}
 
 		@Override
@@ -136,67 +168,105 @@ public class KroneckerGraph {
 				OutputCollector<LongWritable, Text> output, Reporter reporter) throws IOException {
 	
 			int slotId = Integer.parseInt(value.toString().trim());
-			long[] range = HtmlCore.getPageRange(slotId, pages, slotpages);
+			int[] range = KroneckerGraph.getRange(slotId, nodes, nodes_map);
 			
-			for (long i=range[0]; i<range[1]; i++) {
+			for (int i=range[0]; i<range[1]; i++) {
 				key.set(i);
 				Text v = new Text(Long.toString(i));
 				output.collect(key, v);
 			}
 		}
 	}
+	
+	public static class DummyToEdgesMapper extends MapReduceBase implements
+	Mapper<LongWritable, Text, Cell, IntWritable> {
+
+		private int edges_map, nodes, k;
+
+		private void getOptions(JobConf job) {
+			nodes = job.getInt(NUM_NODES, 0);
+			edges_map = job.getInt(EDGES_PER_MAP, 0);
+			k = job.getInt(ITERATIONS, 0);
+		}
+
+		public void configure(JobConf job) {
+			getOptions(job);
+		}
+	
+		public void map(LongWritable key, Text value, OutputCollector<Cell, IntWritable> output,
+				Reporter reporter) throws IOException{
+			
+			int rng=0,row=0,col=0,n=0,auxRow=0,auxCol=0;
+			double prob=0;
+
+			for (int edges=0;edges<edges_map;edges++) {
+				
+				rng=nodes; row=0; col=0;
+				
+				for (int iter=0;iter<k;iter++) {
+					
+					prob=random.nextDouble();
+					n=0;
+					while(prob>probMatrix[n].getProb()) { n++;}
+					
+					auxRow=probMatrix[n].getRow();
+					auxCol=probMatrix[n].getCol();
+					
+					rng/=seedMatrix.length;
+					row+=auxRow*rng;
+					col+=auxCol*rng;
+				}
+				
+				Cell cell = new Cell(0,row,col);
+				
+				//key.set(row);
+				//Text v = new Text("<"+row+","+col+">");
+				output.collect(cell, new IntWritable(1));
+			}
+		}
+	}
+	
+	public static class EdgesReducer extends MapReduceBase implements
+	Reducer<Cell, IntWritable, IntWritable, IntWritable> {
+
+		@Override
+		public void reduce(Cell key, Iterator<IntWritable> values, OutputCollector<IntWritable, IntWritable> output,
+				Reporter reporter) throws IOException {
+			output.collect(new IntWritable(key.getRow()),new IntWritable(key.getCol()));
+		}
+	}
 
 	private void createKroneckerNodes() throws IOException {
 
-		log.info("Creating PageRank nodes...", null);
+		log.info("Creating Kronecker-graph nodes...", null);
 
 		Path fout = new Path(options.getResultPath(), NODES_DIR_NAME);
 		
-		JobConf job = new JobConf(PagerankData.class);
+		JobConf job = new JobConf(KroneckerGraph.class);
 		String jobname = "Create Kronecker-graph nodes";
 
 		job.setJobName(jobname);
 		setKroneckerNodesOptions(job);
 
-		job.setOutputKeyClass(LongWritable.class);
+		job.setOutputKeyClass(IntWritable.class);
 		job.setOutputValueClass(Text.class);
 		
 		FileInputFormat.setInputPaths(job, dummy.getPath());
 		job.setInputFormat(NLineInputFormat.class);
 		
-		if (balance) {
-			/*job.setMapOutputKeyClass(LongWritable.class);
-			job.setMapOutputValueClass(NullWritable.class);
-			
-			job.setMapperClass(BalancedLinkNodesMapper.class);
-			job.setReducerClass(BalancedLinkNodesReducer.class);
-//			job.setPartitionerClass(ModulusPartitioner.class);
+		job.setMapOutputKeyClass(Text.class);
+		job.setMapperClass(DummyToNodesMapper.class);
+		job.setNumReduceTasks(0);
 
-			if (options.getNumReds() > 0) {
-				job.setNumReduceTasks(options.getNumReds());
-			} else {
-				job.setNumReduceTasks(Utils.getMaxNumReds());
-			}*/
-		} else {
-			job.setMapOutputKeyClass(Text.class);
-			job.setMapperClass(DummyToNodesMapper.class);
-			job.setNumReduceTasks(0);
-		}
-
-		/*if (options.isSequenceOut()) {
+		if (options.isSequenceOut()) {
 			job.setOutputFormat(SequenceFileOutputFormat.class);
 		} else {
 			job.setOutputFormat(TextOutputFormat.class);
 		}
-		
-		if (null != options.getCodecClass()) {
-			job.set("mapred.output.compression.type","BLOCK");
-			job.set("mapreduce.output.fileoutputformat.compress.type","BLOCK");
-			FileOutputFormat.setCompressOutput(job, true);
-			FileOutputFormat.setOutputCompressorClass(job, options.getCodecClass());
-		}*/
-		
 		FileOutputFormat.setOutputPath(job, fout);
+		
+		log.info("Nodes will be created: "+job.get(NUM_NODES), null);
+		log.info("Edges will be created: "+job.get(NUM_EDGES), null);
 
 		log.info("Running Job: " +jobname);
 		log.info("Dummy file " + dummy.getPath() + " as input");
@@ -205,84 +275,35 @@ public class KroneckerGraph {
 		log.info("Finished Running Job: " + jobname);
 	}
 
-	public static class DummyToPageRankLinksMapper extends MapReduceBase implements
-	Mapper<LongWritable, Text, LongWritable, Text> {
-
-		private static final Log log = LogFactory.getLog(DummyToPageRankLinksMapper.class.getName());
-		private HtmlCore html;
-		private long pages, slotpages;
-		private String delim;
-
-		private void getOptions(JobConf job) {
-			pages = job.getLong("pages", 0);
-			slotpages = job.getLong("slotpages", 0);
-			delim = job.get("delimiter");
-		}
-
-		public void configure(JobConf job) {
-
-			try {
-				html = new HtmlCore(job);
-				
-				getOptions(job);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
-	
-		public void map(LongWritable key, Text value, OutputCollector<LongWritable, Text> output,
-				Reporter reporter) throws IOException {
-
-			int slotId = Integer.parseInt(value.toString().trim());
-			html.fireRandom(slotId);
-
-			long[] range = HtmlCore.getPageRange(slotId, pages, slotpages);
-
-			/**
-			 * For output collect
-			 */
-			for (long i=range[0]; i<range[1]; i++) {
-				key.set(i);
-				
-				long[] linkids = html.genPureLinkIds();
-				for (int j=0; j<linkids.length; j++) {
-					String to = Long.toString(linkids[j]);
-					Text v = new Text(to);
-					output.collect(key, v);
-					reporter.incrCounter(es.udc.rgen.Counters.BYTES_DATA_GENERATED, 8+v.getLength());
-				}
-				
-				if (0==(i % 10000)) {
-					log.info("still running: " + (i - range[0]) + " of " + slotpages);
-				}
-			}
-		}
-	}
-
 	private void createKroneckerLinks() throws IOException, URISyntaxException {
 
-		log.info("Creating PageRank links", null);
+		log.info("Creating Kronecker-graph edges...", null);
 
-		JobConf job = new JobConf(PagerankData.class);
-		String jobname = "Create pagerank links";
+		JobConf job = new JobConf(KroneckerGraph.class);
+		String jobname = "Create kronecker edges";
 
 		Path fout = new Path(options.getResultPath(), EDGES_DIR_NAME);
 
 		job.setJobName(jobname);
-		setPageRankLinksOptions(job);
+		setKroneckerEdgesOptions(job);
 
-		job.setOutputKeyClass(LongWritable.class);
+		job.setOutputKeyClass(Cell.class);
 		job.setOutputValueClass(Text.class);
-//		job.setMapOutputKeyClass(LongWritable.class);
-//		job.setMapOutputValueClass(Text.class);
-
-		job.setNumReduceTasks(0);
 		
 		FileInputFormat.setInputPaths(job, dummy.getPath());
 		job.setInputFormat(NLineInputFormat.class);
 
-		job.setMapperClass(DummyToPageRankLinksMapper.class);
+		job.setMapperClass(DummyToEdgesMapper.class);
+		job.setReducerClass(EdgesReducer.class);
+		
+		job.setMapOutputKeyClass(Cell.class);
+		job.setMapOutputValueClass(IntWritable.class);
+
+		if (options.getNumReds() > 0) {
+			job.setNumReduceTasks(options.getNumReds());
+		} else {
+			job.setNumReduceTasks(1);
+		}
 
 		if (options.isSequenceOut()) {
 			job.setOutputFormat(SequenceFileOutputFormat.class);
@@ -290,14 +311,10 @@ public class KroneckerGraph {
 			job.setOutputFormat(TextOutputFormat.class);
 		}
 		
-		if (null != options.getCodecClass()) {
-			job.set("mapred.output.compression.type","BLOCK");
-			job.set("mapreduce.output.fileoutputformat.compress.type", "BLOCK");
-			FileOutputFormat.setCompressOutput(job, true);
-			FileOutputFormat.setOutputCompressorClass(job, options.getCodecClass());
-		}
-		
 		FileOutputFormat.setOutputPath(job, fout);
+		
+		log.info("Nodes will be created: "+job.get(NUM_NODES), null);
+		log.info("Edges will be created: "+job.get(NUM_EDGES), null);
 		
 		log.info("Running Job: " +jobname);
 		log.info("Dummy file " + dummy.getPath() + " as input");
@@ -311,7 +328,7 @@ public class KroneckerGraph {
 		log.info("Generating Kronecker-graph data files...");
 		init();
 		createKroneckerNodes();
-		/*createKroneckerLinks();*/
+		createKroneckerLinks();
 		closeGenerator();
 	}
 
