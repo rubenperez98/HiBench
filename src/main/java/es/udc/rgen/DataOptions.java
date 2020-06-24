@@ -218,7 +218,7 @@ public class DataOptions {
 		
 		System.out.println("KRONECKER:");
 		System.out.println("-t kronecker -k <iterations> "
-				+ "[-sm <seed matrix ([value11,value12;value21,value22])>] [-s <seed>] "
+				+ "[-sm <seed matrix ([value11,value12...;value21,value22...;...])>] [-s <seed>] "
 				+ "[-b <base path>] [-n <data name>] "
 				+ "[-m <num maps>] [-r <num reduces>] "
 				+ "[-o sequence] "
