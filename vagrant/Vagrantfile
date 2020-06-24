@@ -1,0 +1,35 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "hashicorp/bionic64"
+  config.vm.synced_folder "..", "/vagrant", type: "virtualbox", mount_options: ["dmode=777,fmode=777"]
+
+  config.vm.define "master", primary: true do |master|
+    master.vm.hostname = "master"
+    master.vm.network :private_network, ip: "192.168.100.10"
+
+    master.vm.provider :virtualbox do |prov|
+        prov.cpus = "4"
+        prov.memory = "2048"
+        prov.name="Hadoop Stand-alone"
+    end
+    
+
+    master.vm.provision "shell", inline: <<-SHELL
+        apt-get update
+        apt-get upgrade
+        apt-get install -y ntp vim nano sshpass unzip python-apt dnsutils dos2unix whois
+	timedatectl set-timezone Europe/Madrid
+	systemctl enable ntp
+	systemctl start ntp
+    SHELL
+    
+    master.vm.provision "ansible_local" do |ansible|
+	ansible.playbook = "provisioning/main.yml"
+    end
+    
+  end
+
+end

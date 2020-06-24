@@ -1,0 +1,12 @@
+---
+- hosts: master
+  become: yes
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+    - name: Install Java
+      apt:
+        name: openjdk-8-jdk
+        state: latest

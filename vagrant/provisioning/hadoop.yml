@@ -1,0 +1,34 @@
+---
+- hosts: master
+  become: yes
+
+  vars_files:
+    - vars.yml
+
+  tasks:
+    - name: Create hadoop directory 
+      file:
+        path: "{{ hadoop_dir }}"
+        state: directory
+        owner: hadoop
+        group: hadoop
+
+    - name: Get hadoop tarball
+      get_url:
+        url: "{{ hadoop_url }}"
+        dest: "{{ download_dir }}"
+        owner: hadoop
+        group: hadoop
+
+    - name: Uncompress hadoop tarball
+      unarchive:
+        src: "{{ download_dir }}/hadoop-{{ hadoop_version }}.tar.gz"
+        dest: "{{ hadoop_dir }}"
+        owner: hadoop
+        group: hadoop
+        mode: '0755'
+   
+    - name: Change some hadoop conf
+      lineinfile:
+        path: "{{ hadoop_conf_dir }}/hadoop-env.sh"
+        line: "export JAVA_HOME={{ java_home }}"

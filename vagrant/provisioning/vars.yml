@@ -1,0 +1,21 @@
+---
+# The directory into which Hadoop will be downloaded
+download_dir: /tmp
+
+# The directory into which Hadoop will be installed
+hadoop_dir: /usr/local
+
+# Hadoop version
+hadoop_version: 2.10.0
+
+# Hadoop URL for downloading
+hadoop_url: "http://apache.claz.org/hadoop/common/hadoop-{{ hadoop_version }}/hadoop-{{ hadoop_version }}.tar.gz"
+
+# Hadoop configuration directory
+hadoop_conf_dir: "{{ hadoop_dir }}/hadoop-{{ hadoop_version }}/etc/hadoop"
+
+# Encrypted version of hadoop password = hadoop
+hadoop_user_passwd: $5$4oiu/Yw1Ezv.YZ$hsAlTL4nEjHh3.aBruhOLI0yBaLtS4f1GfZ6VoIZhN0
+
+# Java home enviroment variable
+java_home: "/usr/lib/jvm/java-8-openjdk-amd64/jre/"
