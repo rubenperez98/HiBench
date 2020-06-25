@@ -104,6 +104,9 @@ public class DataOptions {
 			}
 		}
 		
+		if (maps<=0) {maps=1;}
+		if (reds<=0) {reds=1;}
+		
 		checkOptions();
 		
 		slotpages = (long) Math.ceil(pages * 1.0 / maps);
@@ -112,34 +115,29 @@ public class DataOptions {
 		workPath = new Path(base, TEMP_DIR);
 	}
 	
-	/**
-	   * Parse a number that optionally has a postfix that denotes a base.
-	   * @param str an string integer with an option base {k,m,b,t}.
-	   * @return the expanded value
-	   */
-	  private long parseHumanLong(String str) {
-	    char tail = str.charAt(str.length() - 1);
-	    long base = 1;
-	    switch (tail) {
-	    case 't':
+	private long parseHumanLong(String str) {
+		char tail = str.charAt(str.length() - 1);
+		long base = 1;
+		switch (tail) {
+		case 't':
 		  base *= 1000 * 1000 * 1000 * 1000;
 		  break;
-		case 'b':
+		case 'g':
 		  base *= 1000 * 1000 * 1000;
 		  break;
 		case 'm':
 		  base *= 1000 * 1000;
 		  break;
 		case 'k':
-	      base *= 1000;
-	      break;
-	    default:
-	    }
-	    if (base != 1) {
-	      str = str.substring(0, str.length() - 1);
-	    }
-	    return Long.parseLong(str) * base;
-	  }
+		  base *= 1000;
+		  break;
+		default:
+		}
+		if (base != 1) {
+		  str = str.substring(0, str.length() - 1);
+		}
+		return Long.parseLong(str) * base;
+	}
 	
 	private void checkOptions() {
 		
@@ -219,7 +217,7 @@ public class DataOptions {
 		System.out.println("KRONECKER:");
 		System.out.println("-t kronecker -k <iterations> "
 				+ "[-sm <seed matrix ([value11,value12...;value21,value22...;...])>] [-s <seed>] "
-				+ "[-b <base path>] [-n <data name>] "
+				+ "[-b <base path>] [-n <data name>] \n"
 				+ "[-m <num maps>] [-r <num reduces>] "
 				+ "[-o sequence] "
 				+ "[-d cdelim]\n");
@@ -250,9 +248,12 @@ public class DataOptions {
 				+ "[-o sequence] [-c <codec>]\n");
 		
         System.out.println("KMEANS:");
-        System.out.println("-t kmeans -sampleDir <sampleDirectory> -clusterDir <centroidDirectory> -numClusters <numberofClusters> -numSamples <numberOfSamples> \n"
-        		+ "-samplesPerFile <numberOfSamplesPerFile> -sampleDimension <dimensionOfEachSample> [-centroidMin <minValueOfEachDimensionForCenters>] \n"
-        		+ "[-centroidMax <maxValueOfEachDimensionForCenters>] [-stdMin <minStandardDeviationOfClusters>] [-stdMax <maxStandardDeviationOfClusters>] \n"
+        System.out.println("-t kmeans -sampleDir <sampleDirectory> -clusterDir <centroidDirectory> "
+        		+ "-numClusters <numberofClusters> -numSamples <numberOfSamples> \n"
+        		+ "-samplesPerFile <numberOfSamplesPerFile> -sampleDimension <dimensionOfEachSample> "
+        		+ "[-centroidMin <minValueOfEachDimensionForCenters>] \n"
+        		+ "[-centroidMax <maxValueOfEachDimensionForCenters>] [-stdMin <minStandardDeviationOfClusters>]"
+        		+ " [-stdMax <maxStandardDeviationOfClusters>] \n"
         		+ "[-maxIteration <maxIter> (The samples are generated using Gaussian Distribution around a set of centers which are also generated using UniformDistribution)] \n"
         		+ "[-textOutput (Output text result instead of mahout vector)]");
 		
