@@ -11,6 +11,7 @@ import es.udc.rgen.table.HiveData;
 import es.udc.rgen.table.KMeans;
 import es.udc.rgen.table.NutchData;
 import es.udc.rgen.text.BayesData;
+import es.udc.rgen.text.LDATextGenerator;
 import es.udc.rgen.text.RandomTextWriter;
 import es.udc.rgen.text.tera.TeraGen;
 
@@ -50,6 +51,11 @@ public class RGen extends Configured implements Tool {
 			}
 			case KRONECKER: {
 				KroneckerGraph data = new KroneckerGraph(options);
+				data.generate();
+				break;
+			}
+			case LDA: {
+				LDATextGenerator data = new LDATextGenerator(options);
 				data.generate();
 				break;
 			}

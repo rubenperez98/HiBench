@@ -31,6 +31,18 @@ public class Utils {
 
 	private static final Log log = LogFactory.getLog(Utils.class.getName());
 	
+	public static final boolean existsPath(Path path) throws IOException {
+		
+		FileSystem fs = path.getFileSystem(new Configuration());
+		if (fs.exists(path)) {
+			fs.close();
+			return true;
+		} else {
+			fs.close();
+			return false;
+		}
+	}
+	
 	public static final void checkHdfsPath(Path path) throws IOException {
 		
 		FileSystem fs = path.getFileSystem(new Configuration());

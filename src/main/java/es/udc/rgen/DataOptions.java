@@ -17,7 +17,7 @@ public class DataOptions {
 	private static final int NUM_LINUX_DICT_WORD = 479623;
 
 	public static enum DataType {
-		HIVE, PAGERANK, BAYES, NUTCH, NONE, RANDOMTEXT, TERAGEN, KMEANS, KRONECKER
+		HIVE, PAGERANK, BAYES, NUTCH, NONE, RANDOMTEXT, TERAGEN, KMEANS, KRONECKER, LDA
 	}
 	private DataType type;
 
@@ -68,6 +68,9 @@ public class DataOptions {
 			} else if ("kronecker".equalsIgnoreCase(args[1])) {
 				type = DataType.KRONECKER;
 				dname = "kronecker";
+			} else if ("ldatext".equalsIgnoreCase(args[1])) {
+				type = DataType.LDA;
+				dname = "ldatext";
 			} else if ("bayes".equalsIgnoreCase(args[1])) {
 				type = DataType.BAYES;
 				words = NUM_LINUX_DICT_WORD;
@@ -172,6 +175,11 @@ public class DataOptions {
 				System.exit(printUsage("Error: number of arguments should be no less than 1 for Kronecker!!!"));
 			}
 			break;
+		case LDA:
+			if (remainArgs.length()==0) {
+				System.exit(printUsage("Error: number of arguments should be no less than 1 for LDA-text!!!"));
+			}
+			break;
 		case BAYES:
 			if (pages<=0 || words<=0) {
 				System.exit(printUsage("Error: pages/words of bayes data should be larger than 0!!!"));
@@ -211,6 +219,12 @@ public class DataOptions {
 		
 		System.out.println("TERAGEN:");
 		System.out.println("-t teragen -p <rows> "
+				+ "[-b <base path>] [-n <data name>] "
+				+ "[-m <num maps>]\n");
+		
+		System.out.println("LDA TEXT:");
+		System.out.println("-t ldatext -i <input_model> [-p <bytes>] "
+				+ "[-l <lines>] [-wl <~words/line>] [-s <seed>] "
 				+ "[-b <base path>] [-n <data name>] "
 				+ "[-m <num maps>]\n");
 		
