@@ -207,6 +207,7 @@ public class RandomTextWriter extends Configured {
     public void setup(Context context) {
       Configuration conf = context.getConfiguration();
       numBytesToWrite = conf.getLong(BYTES_PER_MAP, 1*1024*1024*1024);
+      //log.info("-------------------------------------------> BYTES PER MAP: "+numBytesToWrite);
       minWordsInKey = conf.getInt(MIN_KEY, 5);
       wordsInKeyRange = (conf.getInt(MAX_KEY, 10) - minWordsInKey);
       minWordsInValue = conf.getInt(MIN_VALUE, 10);
@@ -279,8 +280,8 @@ public class RandomTextWriter extends Configured {
     }
     conf.setInt(NUM_MAPS, numMaps);
     
-    int numBytesToWritePerMap = (int) (totalBytesToWrite / numMaps);
-    conf.setInt(BYTES_PER_MAP, numBytesToWritePerMap);
+    long numBytesToWritePerMap = (totalBytesToWrite / numMaps);
+    conf.setLong(BYTES_PER_MAP, numBytesToWritePerMap);
     
     Job job = Job.getInstance(conf);
     

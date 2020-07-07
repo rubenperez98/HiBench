@@ -2,7 +2,6 @@ package es.udc.rgen.text;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
 import java.util.Random;
 
 import org.apache.commons.logging.Log;
@@ -40,6 +39,7 @@ public class LDATextGenerator {
 	public static final String NUM_TOPICS = "mapreduce.ldatext.numtopics";
 	public static final String NUM_TERMS = "mapreduce.ldatext.numterms";
 	public static final String ALPHA = "mapreduce.ldatext.alpha";
+	public static final String DELIMETER = "mapreduce.output.textoutputformat.separator";
 	
 	private static final String ALPHAFILE = "final.other";
 	private static final String BETAFILE = "final.beta";
@@ -107,6 +107,7 @@ public class LDATextGenerator {
 	
 	@SuppressWarnings("deprecation")
 	private void setOptions(JobConf job) throws URISyntaxException, IOException {
+		job.set(DELIMETER, " ");
 		job.setInt(LINES, lines);
 		job.setInt(WORDS_PER_LINE, words_per_line);
 		if (options.getNumPages() <= 0) {
