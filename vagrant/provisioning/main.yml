@@ -27,7 +27,7 @@
           export HADOOP_MAPRED_HOME=$HADOOP_HOME
           export PATH=$PATH:$HADOOP_HOME/bin
           export HADOOP_EXAMPLES=$HADOOP_HOME/share/hadoop/mapreduce/hadoop-mapreduce-examples-{{ hadoop_version }}.jar
-          export RGen='hadoop jar /vagrant/target/rgen-1.0-SNAPSHOT-jar-with-dependencies.jar es.udc.rgen.DataGen'
+          export RGen='hadoop jar /vagrant/target/rgen-1.0-SNAPSHOT-jar-with-dependencies.jar'
         backup: yes
         
 - name: Java installation
