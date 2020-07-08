@@ -2,7 +2,9 @@ package es.udc.rgen.text;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Random;
 
 import org.apache.commons.logging.Log;
@@ -16,10 +18,12 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.*;
+import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import es.udc.rgen.*;
 import es.udc.rgen.misc.Utils;
+import es.udc.rgen.text.RandomTextWriter.RandomInputFormat.RandomRecordReader;
 
 public class LDATextGenerator extends Configured {
 
@@ -116,7 +120,6 @@ public class LDATextGenerator extends Configured {
 			job.setBoolean(CONTROL_BYTES, true);
 		}
 		
-		
 		FileSystem fs = FileSystem.get(job);
 		FSDataInputStream inalpha = fs.open(alphafile);
 		
@@ -155,6 +158,72 @@ public class LDATextGenerator extends Configured {
 		
 		fs.close();
 	}
+	
+	static class LDAInputFormat extends InputFormat<Text, Text> {
+
+	    /** 
+	     * Generate the requested number of file splits, with the filename
+	     * set to the filename of the output file.
+	     */
+	    public List<InputSplit> getSplits(JobContext job) throws IOException {
+	      List<InputSplit> result = new ArrayList<InputSplit>();
+	      Path outDir = FileOutputFormat.getOutputPath(job);
+	      int numSplits = job.getConfiguration().getInt(NUM_MAPS, 1);
+	      for(int i=0; i < numSplits; ++i) {
+	        result.add(new FileSplit(new Path(outDir, "dummy-split-" + i), 0, 1, 
+	                                  (String[])null));
+	      }
+	      return result;
+	    }
+
+	    /**
+	     * Return a single record (filename, "") where the filename is taken from
+	     * the file split.
+	     */
+	    static class RandomRecordReader extends RecordReader<Text, Text> {
+	      Path name;
+	      Text key = null;
+	      Text value = new Text();
+	      public RandomRecordReader(Path p) {
+	        name = p;
+	      }
+	      
+	      public void initialize(InputSplit split,
+	                             TaskAttemptContext context)
+	      throws IOException, InterruptedException {
+	    	  
+	      }
+	      
+	      public boolean nextKeyValue() {
+	        if (name != null) {
+	          key = new Text();
+	          key.set(name.getName());
+	          name = null;
+	          return true;
+	        }
+	        return false;
+	      }
+	      
+	      public Text getCurrentKey() {
+	        return key;
+	      }
+	      
+	      public Text getCurrentValue() {
+	        return value;
+	      }
+	      
+	      public void close() {}
+
+	      public float getProgress() {
+	        return 0.0f;
+	      }
+	    }
+
+	    public RecordReader<Text, Text> createRecordReader(InputSplit split,
+	        TaskAttemptContext context) throws IOException, InterruptedException {
+	      return new RandomRecordReader(((FileSplit) split).getPath());
+	    }
+	  }
 	
 	static class DummyToTextMapper extends Mapper<Text, Text, Text, Text> {
 
@@ -245,7 +314,7 @@ public class LDATextGenerator extends Configured {
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(Text.class);
 		
-		job.setInputFormatClass(RandomTextWriter.RandomInputFormat.class);
+		job.setInputFormatClass(LDAInputFormat.class);
 		job.setMapperClass(DummyToTextMapper.class);
 		
 		job.setNumReduceTasks(0);
