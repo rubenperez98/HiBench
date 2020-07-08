@@ -233,7 +233,6 @@ public class DataOptions {
 				+ "[-sm <seed matrix ([value11,value12...;value21,value22...;...])>] [-s <seed>] "
 				+ "[-b <base path>] [-n <data name>] \n"
 				+ "[-m <num maps>] [-r <num reduces>] "
-				+ "[-o sequence] "
 				+ "[-d cdelim]\n");
 		
 		System.out.println("HIVE:");

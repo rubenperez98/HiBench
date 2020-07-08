@@ -44,8 +44,7 @@ public class KroneckerGraph {
 	private DataOptions options;
 
 	private static final String NODES_DIR_NAME = "nodes";
-	private static final String EDGES_DIR_NAME = "edges";	
-	private boolean balance = false;
+	private static final String EDGES_DIR_NAME = "edges";
 
 	private String cdelim = "\t";
 	private int k = 1;
@@ -73,10 +72,24 @@ public class KroneckerGraph {
 
 			if ("-d".equals(args[i])) {
 				cdelim = args[++i];
-			} else if ("-pbalance".equals(args[i])) {
-				balance = true;
 			} else if ("-sm".equals(args[i])) {
-				parseMatrix(args[++i]);
+				
+				if ("facebook".equals(args[i++])) {
+					double[][] auxSeedMatrix = {{0.9999 , 0.5887},{0.6254 , 0.3676}};
+					seedMatrix = auxSeedMatrix;
+					++i;
+				} else if ("google".equals(args[i++])) {
+					double[][] auxSeedMatrix = {{0.8305 , 0.5573},{0.4638 , 0.3021}};
+					seedMatrix = auxSeedMatrix;
+					++i;
+				} else if ("amazon".equals(args[i++])) {
+					double[][] auxSeedMatrix = {{0.9532 , 0.5502},{0.4439 , 0.2511}};
+					seedMatrix = auxSeedMatrix;
+					++i;
+				} else {
+					parseMatrix(args[++i]);
+				}
+				
 			} else if ("-k".equals(args[i])) {
 				k = Integer.parseInt(args[++i]);
 			} else if ("-s".equals(args[i])) {
