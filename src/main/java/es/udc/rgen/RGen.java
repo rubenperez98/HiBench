@@ -55,7 +55,7 @@ public class RGen extends Configured implements Tool {
 				break;
 			}
 			case LDA: {
-				LDATextGenerator data = new LDATextGenerator(options);
+				LDATextGenerator data = new LDATextGenerator(getConf(), options);
 				data.generate();
 				break;
 			}

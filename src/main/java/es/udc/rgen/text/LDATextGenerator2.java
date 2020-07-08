@@ -2,28 +2,35 @@ package es.udc.rgen.text;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.Date;
 import java.util.Random;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.commons.math3.distribution.GammaDistribution;
 import org.apache.commons.math3.distribution.PoissonDistribution;
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.FSDataInputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.mapreduce.*;
-import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
+import org.apache.hadoop.mapred.FileInputFormat;
+import org.apache.hadoop.mapred.FileOutputFormat;
+import org.apache.hadoop.mapred.JobClient;
+import org.apache.hadoop.mapred.JobConf;
+import org.apache.hadoop.mapred.MapReduceBase;
+import org.apache.hadoop.mapred.Mapper;
+import org.apache.hadoop.mapred.OutputCollector;
+import org.apache.hadoop.mapred.Reporter;
+import org.apache.hadoop.mapred.TextOutputFormat;
+import org.apache.hadoop.mapred.lib.NLineInputFormat;
+
 import es.udc.rgen.*;
+import es.udc.rgen.misc.Dummy;
 import es.udc.rgen.misc.Utils;
 
-public class LDATextGenerator extends Configured {
+public class LDATextGenerator2 {
 
-	private static final Log log = LogFactory.getLog(LDATextGenerator.class.getName());
+	private static final Log log = LogFactory.getLog(LDATextGenerator2.class.getName());
 	
 	public static final String LINES = "mapreduce.ldatext.lines";
 	public static final String WORDS_PER_LINE = "mapreduce.ldatext.wordsline";
@@ -33,15 +40,12 @@ public class LDATextGenerator extends Configured {
 	public static final String NUM_TERMS = "mapreduce.ldatext.numterms";
 	public static final String ALPHA = "mapreduce.ldatext.alpha";
 	public static final String DELIMETER = "mapreduce.output.textoutputformat.separator";
-	public static final String NUM_MAPS = "mapreduce.ldatext.nummaps";
 	
 	private static final String ALPHAFILE = "final.other";
 	private static final String BETAFILE = "final.beta";
 	private static final String VOCAFILE = ".voca";
 	
 	private DataOptions options;
-	private Configuration conf;
-	private Class<? extends OutputFormat> outputFormatClass = SequenceFileOutputFormat.class;
 
 	private long lines = Long.MAX_VALUE;
 	private int	words_per_line = 100;
@@ -55,10 +59,9 @@ public class LDATextGenerator extends Configured {
 	
 	private static Random random_seed = new Random(System.currentTimeMillis());
 
-	//private Dummy dummy;
+	private Dummy dummy;
 
-	public LDATextGenerator (Configuration conf, DataOptions options) throws IOException {
-		this.conf=conf;
+	public LDATextGenerator2 (DataOptions options) throws IOException {
 		this.options = options;
 		parseArgs(options.getRemainArgs());
 	}
@@ -98,17 +101,16 @@ public class LDATextGenerator extends Configured {
 		log.info("Initializing LDA-text data generator...");
 		
 		Utils.checkHdfsPath(options.getResultPath(), true);
-		//Utils.checkHdfsPath(options.getWorkPath(), true);
+		Utils.checkHdfsPath(options.getWorkPath(), true);
 
-		//dummy = new Dummy(options.getWorkPath(), options.getNumMaps());
+		dummy = new Dummy(options.getWorkPath(), options.getNumMaps());
 	}
 	
 	@SuppressWarnings("deprecation")
-	private void setOptions(Configuration job) throws URISyntaxException, IOException {
+	private void setOptions(JobConf job) throws URISyntaxException, IOException {
 		job.set(DELIMETER, " ");
 		job.setLong(LINES, lines);
 		job.setInt(WORDS_PER_LINE, words_per_line);
-		job.setInt(NUM_MAPS, options.getNumMaps());
 		job.setLong(BYTES_PER_MAP, options.getNumSlotPages());
 		if (options.getNumPages() <= 0) {
 			job.setBoolean(CONTROL_BYTES, false);
@@ -156,24 +158,31 @@ public class LDATextGenerator extends Configured {
 		fs.close();
 	}
 	
-	static class DummyToTextMapper extends Mapper<Text, Text, Text, Text> {
+	public static class DummyToTextMapper extends MapReduceBase implements
+	Mapper<LongWritable, Text, Text, Text> {
 
 		private int words_line, topics_num;
 		private long lines, bytes_per_map;
 		private double alpha;
 		private boolean control_bytes;
 		
-		public void setup(Context context) {
-			Configuration conf = context.getConfiguration();
-			lines = conf.getLong(LINES, Long.MAX_VALUE);
-			words_line = conf.getInt(WORDS_PER_LINE, 20);
-			topics_num = conf.getInt(NUM_TOPICS, 0);
-			alpha = conf.getDouble(ALPHA, 1);
-			bytes_per_map = conf.getLong(BYTES_PER_MAP, 1024*1024*1024);
-			control_bytes = conf.getBoolean(CONTROL_BYTES, false);
+		private void getOptions(JobConf job) {
+			lines = job.getLong(LINES, Long.MAX_VALUE);
+			words_line = job.getInt(WORDS_PER_LINE, 20);
+			topics_num = job.getInt(NUM_TOPICS, 0);
+			alpha = job.getDouble(ALPHA, 1);
+			bytes_per_map = job.getLong(BYTES_PER_MAP, 1024*1024*1024);
+			control_bytes = job.getBoolean(CONTROL_BYTES, false);
 		}
 		
-		public void map(Text key, Text value, Context context) throws IOException,InterruptedException {
+		@Override
+		public void configure(JobConf job) {
+			getOptions(job);
+		}
+		
+		@Override
+		public void map(LongWritable key, Text value, OutputCollector<Text, Text> output,
+				Reporter reporter) throws IOException{
 			
 			int lenght, topic, word;
 			PoissonDistribution poisson;
@@ -191,13 +200,14 @@ public class LDATextGenerator extends Configured {
 			StringBuffer line, key_s;
 			Text key_t, line_t;
 			
-			poisson = new PoissonDistribution(words_line);
 			multinomial1 = new Multinomial(random_seed,theta);
 			for (int i=0; i<topics_num; i++) {
 				multinomiali[i] = new Multinomial(random_seed,beta[i]);;
 			}
 			
 			for (long size_i=0; cont && size_i<lines ; size_i++) {
+				
+				poisson = new PoissonDistribution(words_line);
 				lenght = poisson.sample();
 				
 				key_s = new StringBuffer("");
@@ -219,7 +229,7 @@ public class LDATextGenerator extends Configured {
 				line_t = new Text(line.toString());
 				
 				bytes_written += key_t.getLength() + line_t.getLength();
-				context.write(key_t, line_t);
+				output.collect(key_t, line_t);
 				
 				if (bytes_written >= bytes_per_map && control_bytes) {
 					cont = false;
@@ -228,46 +238,39 @@ public class LDATextGenerator extends Configured {
 		}
 	}
 
-	private void createLDAText() throws IOException, URISyntaxException, ClassNotFoundException, InterruptedException {
+	private void createLDAText() throws IOException, URISyntaxException {
 
 		log.info("Creating LDA-text data...", null);
+
+		JobConf job = new JobConf(LDATextGenerator2.class);
+		String jobname = "Create LDA-text data";
 		
 		Utils.checkHdfsPath(options.getResultPath());
 		Path fout = options.getResultPath();
-		
-		setOptions(conf);
-		
-		Job job = Job.getInstance(conf);
-		
-		job.setJarByClass(LDATextGenerator.class);
-	    job.setJobName("Create LDA-text data");
+
+		job.setJobName(jobname);
+		setOptions(job);
 
 		job.setOutputKeyClass(Text.class);
 		job.setOutputValueClass(Text.class);
 		
-		job.setInputFormatClass(RandomTextWriter.RandomInputFormat.class);
-		job.setMapperClass(DummyToTextMapper.class);
+		FileInputFormat.setInputPaths(job, dummy.getPath());
+		job.setInputFormat(NLineInputFormat.class);
 		
+		job.setMapperClass(DummyToTextMapper.class);
 		job.setNumReduceTasks(0);
 		
-		job.setOutputFormatClass(outputFormatClass);
 		FileOutputFormat.setOutputPath(job, fout);
+		job.setOutputFormat(TextOutputFormat.class);
 		
-		log.info("Running Job: Create LDA-text data");
-		//log.info("Dummy file " + dummy.getPath() + " as input");
+		log.info("Running Job: " +jobname);
+		log.info("Dummy file " + dummy.getPath() + " as input");
 		log.info("Data output " + fout + "");
-		Date startTime = new Date();
-	    log.info("Job started: " + startTime);
-	    int ret = job.waitForCompletion(true) ? 0 : 1;
-	    Date endTime = new Date();
-	    log.info("Job ended: " + endTime);
-	    log.info("The job took " + 
-	                       (endTime.getTime() - startTime.getTime()) /1000 + 
-	                       " seconds.");
-		log.info("Finished Running Job: Create LDA-text data");
+		JobClient.runJob(job);
+		log.info("Finished Running Job: " + jobname);
 	}
 
-	public void generate() throws IOException, URISyntaxException, ClassNotFoundException, InterruptedException {
+	public void generate() throws IOException, URISyntaxException {
 		
 		log.info("Generating LDA-text data files...");
 		init();
