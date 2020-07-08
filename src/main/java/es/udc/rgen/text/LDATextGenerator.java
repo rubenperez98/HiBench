@@ -47,7 +47,8 @@ public class LDATextGenerator {
 	
 	private DataOptions options;
 
-	private int lines = Integer.MAX_VALUE, words_per_line = 100;
+	private long lines = Long.MAX_VALUE;
+	private int	words_per_line = 100;
 	private Path input_path = null, alphafile = null, betafile = null, vocafile = null;
 	
 	private int num_topics = 0, num_terms = 0;
@@ -70,7 +71,7 @@ public class LDATextGenerator {
 		for (int i=0; i<args.length; i++) {
 
 			if ("-l".equals(args[i])) {
-				lines = Integer.parseInt(args[++i]);
+				lines = Long.parseLong(args[++i]);
 			} else if ("-wl".equals(args[i])) {
 				words_per_line = Integer.parseInt(args[++i]);
 			} else if ("-s".equals(args[i])) {
@@ -108,7 +109,7 @@ public class LDATextGenerator {
 	@SuppressWarnings("deprecation")
 	private void setOptions(JobConf job) throws URISyntaxException, IOException {
 		job.set(DELIMETER, " ");
-		job.setInt(LINES, lines);
+		job.setLong(LINES, lines);
 		job.setInt(WORDS_PER_LINE, words_per_line);
 		if (options.getNumPages() <= 0) {
 			job.setInt(BYTES_PER_MAP, (int) options.getNumSlotPages());
@@ -161,12 +162,13 @@ public class LDATextGenerator {
 	public static class DummyToTextMapper extends MapReduceBase implements
 	Mapper<LongWritable, Text, Text, Text> {
 
-		private int lines, words_line, topics_num, bytes_per_map;
+		private int words_line, topics_num, bytes_per_map;
+		private long lines;
 		private double alpha;
 		private boolean control_bytes;
 		
 		private void getOptions(JobConf job) {
-			lines = job.getInt(LINES, 10);
+			lines = job.getLong(LINES, Long.MAX_VALUE);
 			words_line = job.getInt(WORDS_PER_LINE, 10);
 			topics_num = job.getInt(NUM_TOPICS, 0);
 			alpha = job.getDouble(ALPHA, 1);
