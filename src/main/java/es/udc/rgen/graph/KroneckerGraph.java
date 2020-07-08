@@ -2,6 +2,7 @@ package es.udc.rgen.graph;
 
 import java.io.IOException;
 import java.net.URISyntaxException;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.Random;
 
@@ -320,7 +321,14 @@ public class KroneckerGraph {
 		log.info("Running Job: " +jobname);
 		log.info("Dummy file " + dummy.getPath() + " as input");
 		log.info("Vertices file " + fout + " as output");
+		Date startTime = new Date();
+	    log.info("Job started: " + startTime);
 		JobClient.runJob(job);
+		Date endTime = new Date();
+	    log.info("Job ended: " + endTime);
+	    log.info("The job took " + 
+	                       (endTime.getTime() - startTime.getTime()) /1000 + 
+	                       " seconds.");
 		log.info("Finished Running Job: " + jobname);
 	}
 
@@ -372,7 +380,14 @@ public class KroneckerGraph {
 		log.info("Running Job: " +jobname);
 		log.info("Dummy file " + dummy.getPath() + " as input");
 		log.info("Edges file " + fout + " as output");
+		Date startTime = new Date();
+	    log.info("Job started: " + startTime);
 		JobClient.runJob(job);
+		Date endTime = new Date();
+	    log.info("Job ended: " + endTime);
+	    log.info("The job took " + 
+	                       (endTime.getTime() - startTime.getTime()) /1000 + 
+	                       " seconds.");
 		log.info("Finished Running Job: " + jobname);
 	}
 
@@ -380,8 +395,15 @@ public class KroneckerGraph {
 		
 		log.info("Generating Kronecker-graph data files...");
 		init();
+		Date startTime = new Date();
+	    log.info("Jobs started: " + startTime);
 		createKroneckerNodes();
 		createKroneckerLinks();
+		Date endTime = new Date();
+		log.info("Jobs ended: " + endTime);
+	    log.info("The jobs took " + 
+	                       (endTime.getTime() - startTime.getTime()) /1000 + 
+	                       " seconds.");
 		closeGenerator();
 	}
 
