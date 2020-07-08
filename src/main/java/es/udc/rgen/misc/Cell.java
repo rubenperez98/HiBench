@@ -35,7 +35,7 @@ public class Cell implements WritableComparable<Cell>{
 		return row;
 	}
 
-	public void setRow(int row) {
+	public void setRow(long row) {
 		this.row = row;
 	}
 
@@ -43,7 +43,7 @@ public class Cell implements WritableComparable<Cell>{
 		return col;
 	}
 
-	public void setCol(int col) {
+	public void setCol(long col) {
 		this.col = col;
 	}
 
@@ -55,8 +55,8 @@ public class Cell implements WritableComparable<Cell>{
 
 	@Override
 	public void readFields(DataInput in) throws IOException {
-		this.row=in.readInt();
-		this.col=in.readInt();
+		this.row=in.readLong();
+		this.col=in.readLong();
 	}
 	
 	@Override
@@ -89,7 +89,7 @@ public class Cell implements WritableComparable<Cell>{
 	
 	@Override
 	public int hashCode() {
-		final int prime = 31;
+		final long prime = 31;
 		long result = 1;
 		result = prime * result + col;
 		result = prime * result + row;
