@@ -8,8 +8,8 @@ import org.apache.hadoop.io.WritableComparable;
 public class Cell implements WritableComparable<Cell>{
 
 	private double prob;
-	private int row;
-	private int col;
+	private long row;
+	private long col;
 	
 	Cell(){
 		this.prob=0;
@@ -17,7 +17,7 @@ public class Cell implements WritableComparable<Cell>{
 		this.col=0;
 	}
 	
-	public Cell(double prob, int row, int col) {
+	public Cell(double prob, long row, long col) {
 		this.prob = prob;
 		this.row = row;
 		this.col = col;
@@ -31,7 +31,7 @@ public class Cell implements WritableComparable<Cell>{
 		this.prob = prob;
 	}
 
-	public int getRow() {
+	public long getRow() {
 		return row;
 	}
 
@@ -39,7 +39,7 @@ public class Cell implements WritableComparable<Cell>{
 		this.row = row;
 	}
 
-	public int getCol() {
+	public long getCol() {
 		return col;
 	}
 
@@ -49,8 +49,8 @@ public class Cell implements WritableComparable<Cell>{
 
 	@Override
 	public void write(DataOutput out) throws IOException {
-		out.writeInt(this.row);
-		out.writeInt(this.col);
+		out.writeLong(this.row);
+		out.writeLong(this.col);
 	}
 
 	@Override
@@ -90,10 +90,10 @@ public class Cell implements WritableComparable<Cell>{
 	@Override
 	public int hashCode() {
 		final int prime = 31;
-		int result = 1;
+		long result = 1;
 		result = prime * result + col;
 		result = prime * result + row;
-		return result;
+		return (int) result;
 	}
 
 }

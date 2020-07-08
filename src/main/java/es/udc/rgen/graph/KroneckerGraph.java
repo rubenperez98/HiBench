@@ -48,8 +48,8 @@ public class KroneckerGraph {
 
 	private String cdelim = "\t";
 	private int k = 1;
-	private int nodes = 0;
-	private int edges = 0;
+	private long nodes = 0;
+	private long edges = 0;
 	private double sumProbSeedMatrix = 0;
 	
 	// Facebook graph seed matrix
@@ -74,21 +74,22 @@ public class KroneckerGraph {
 				cdelim = args[++i];
 			} else if ("-sm".equals(args[i])) {
 				
-				if ("facebook".equals(args[i++])) {
+				int i_aux=i+1;
+				
+				if ("facebook".equals(args[i_aux])) {
 					double[][] auxSeedMatrix = {{0.9999 , 0.5887},{0.6254 , 0.3676}};
 					seedMatrix = auxSeedMatrix;
-					++i;
-				} else if ("google".equals(args[i++])) {
+				} else if ("google".equals(args[i_aux])) {
 					double[][] auxSeedMatrix = {{0.8305 , 0.5573},{0.4638 , 0.3021}};
 					seedMatrix = auxSeedMatrix;
-					++i;
-				} else if ("amazon".equals(args[i++])) {
+				} else if ("amazon".equals(args[i_aux])) {
 					double[][] auxSeedMatrix = {{0.9532 , 0.5502},{0.4439 , 0.2511}};
 					seedMatrix = auxSeedMatrix;
-					++i;
 				} else {
-					parseMatrix(args[++i]);
+					parseMatrix(args[i_aux]);
 				}
+				
+				++i;
 				
 			} else if ("-k".equals(args[i])) {
 				k = Integer.parseInt(args[++i]);
@@ -140,7 +141,7 @@ public class KroneckerGraph {
 	}
 
 	private void setKroneckerNodesOptions(JobConf job) {
-		nodes = (int) Math.ceil(Math.pow(seedMatrix.length,k));
+		nodes = (long) Math.ceil(Math.pow(seedMatrix.length,k));
 		
 		double sum = 0;
 		for (int i = 0;i<seedMatrix.length;i++) {
@@ -150,13 +151,13 @@ public class KroneckerGraph {
 		}
 		sumProbSeedMatrix = sum;
 		
-		edges = (int) Math.ceil(Math.pow(sum,k));
+		edges = (long) Math.ceil(Math.pow(sum,k));
 		
-		job.setInt(NUM_NODES, nodes);
-		job.setInt(NUM_EDGES, edges);
+		job.setLong(NUM_NODES, nodes);
+		job.setLong(NUM_EDGES, edges);
 		
-		int nodes_map = (int) Math.ceil(nodes * 1.0 / options.getNumMaps());
-		job.setInt(NODES_PER_MAP, nodes_map);
+		long nodes_map = (long) Math.ceil(nodes * 1.0 / options.getNumMaps());
+		job.setLong(NODES_PER_MAP, nodes_map);
 	}
 	
 	private void setKroneckerEdgesOptions(JobConf job) throws URISyntaxException {
@@ -174,19 +175,19 @@ public class KroneckerGraph {
 			}
 		}
 		
-		job.setInt(NUM_NODES, nodes);
-		job.setInt(NUM_EDGES, edges);
+		job.setLong(NUM_NODES, nodes);
+		job.setLong(NUM_EDGES, edges);
 		
-		int edges_map = (int) Math.ceil(edges * 1.0 / options.getNumMaps());
-		job.setInt(EDGES_PER_MAP, edges_map);
+		long edges_map = (long) Math.ceil(edges * 1.0 / options.getNumMaps());
+		job.setLong(EDGES_PER_MAP, edges_map);
 		
 		job.set(DELIMETER, cdelim);
 		
 		job.setInt(ITERATIONS, k);
 	}
 	
-	public static int[] getRange(int slotId, int limit, int slotlimit) {
-		int[] range = new int[2];
+	public static long[] getRange(int slotId, long limit, long slotlimit) {
+		long[] range = new long[2];
 		range[0] = slotlimit * (slotId - 1);
 		range[1] = range[0] + slotlimit;
 		if (range[1] > limit) {
@@ -198,11 +199,11 @@ public class KroneckerGraph {
 	public static class DummyToNodesMapper extends MapReduceBase implements
 	Mapper<LongWritable, Text, LongWritable, Text> {
 		
-		private int nodes, nodes_map;
+		private long nodes, nodes_map;
 
 		private void getOptions(JobConf job) {
-			nodes = job.getInt(NUM_NODES, 0);
-			nodes_map = job.getInt(NODES_PER_MAP, 0);
+			nodes = job.getLong(NUM_NODES, 0);
+			nodes_map = job.getLong(NODES_PER_MAP, 0);
 		}
 
 		@Override
@@ -215,9 +216,9 @@ public class KroneckerGraph {
 				OutputCollector<LongWritable, Text> output, Reporter reporter) throws IOException {
 	
 			int slotId = Integer.parseInt(value.toString().trim());
-			int[] range = KroneckerGraph.getRange(slotId, nodes, nodes_map);
+			long[] range = KroneckerGraph.getRange(slotId, nodes, nodes_map);
 			
-			for (int i=range[0]; i<range[1]; i++) {
+			for (long i=range[0]; i<range[1]; i++) {
 				key.set(i);
 				Text v = new Text(Long.toString(i));
 				output.collect(key, v);
@@ -228,11 +229,12 @@ public class KroneckerGraph {
 	public static class DummyToEdgesMapper extends MapReduceBase implements
 	Mapper<LongWritable, Text, Cell, IntWritable> {
 
-		private int edges_map, nodes, k;
+		private int k;
+		private long edges_map, nodes;
 
 		private void getOptions(JobConf job) {
-			nodes = job.getInt(NUM_NODES, 0);
-			edges_map = job.getInt(EDGES_PER_MAP, 0);
+			nodes = job.getLong(NUM_NODES, 0);
+			edges_map = job.getLong(EDGES_PER_MAP, 0);
 			k = job.getInt(ITERATIONS, 0);
 		}
 
@@ -243,7 +245,8 @@ public class KroneckerGraph {
 		public void map(LongWritable key, Text value, OutputCollector<Cell, IntWritable> output,
 				Reporter reporter) throws IOException{
 			
-			int rng=0,row=0,col=0,n=0,auxRow=0,auxCol=0;
+			long rng=0,row=0,col=0,auxRow=0,auxCol=0;
+			int n=0;
 			double prob=0;
 
 			for (int edges=0;edges<edges_map;edges++) {
@@ -272,12 +275,12 @@ public class KroneckerGraph {
 	}
 	
 	public static class EdgesReducer extends MapReduceBase implements
-	Reducer<Cell, IntWritable, IntWritable, IntWritable> {
+	Reducer<Cell, IntWritable, LongWritable, LongWritable> {
 
 		@Override
-		public void reduce(Cell key, Iterator<IntWritable> values, OutputCollector<IntWritable, IntWritable> output,
+		public void reduce(Cell key, Iterator<IntWritable> values, OutputCollector<LongWritable, LongWritable> output,
 				Reporter reporter) throws IOException {
-			output.collect(new IntWritable(key.getRow()),new IntWritable(key.getCol()));
+			output.collect(new LongWritable(key.getRow()),new LongWritable(key.getCol()));
 		}
 	}
 
