@@ -21,9 +21,10 @@ import org.apache.hadoop.mapreduce.*;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
+
 import es.udc.rgen.*;
 import es.udc.rgen.misc.Utils;
-import es.udc.rgen.text.RandomTextWriter.RandomInputFormat.RandomRecordReader;
 
 public class LDATextGenerator extends Configured {
 
@@ -45,7 +46,7 @@ public class LDATextGenerator extends Configured {
 	
 	private DataOptions options;
 	private Configuration conf;
-	private Class<? extends OutputFormat> outputFormatClass = SequenceFileOutputFormat.class;
+	private Class<? extends OutputFormat> outputFormatClass = TextOutputFormat.class;
 
 	private long lines = Long.MAX_VALUE;
 	private int	words_per_line = 100;
@@ -277,7 +278,7 @@ public class LDATextGenerator extends Configured {
 					
 					word = multinomiali[topic].sample();
 					
-					if (i<5) {
+					if (i<lenght/2) {
 						key_s.append(voca[word]).append(" ");
 					} else {
 						line.append(voca[word]).append(" ");
