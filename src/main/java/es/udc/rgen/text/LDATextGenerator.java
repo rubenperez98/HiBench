@@ -20,7 +20,6 @@ import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.*;
 import org.apache.hadoop.mapreduce.lib.input.FileSplit;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
-import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 
 import es.udc.rgen.*;
@@ -245,6 +244,12 @@ public class LDATextGenerator extends Configured {
 		
 		public void map(Text key, Text value, Context context) throws IOException,InterruptedException {
 			
+			log.info("LINES: "+lines);
+			log.info("WORDS_LINE: "+words_line);
+			log.info("TOPICS_NUM: "+topics_num);
+			log.info("ALPHA: "+alpha);
+			log.info("BYTES_MAP: "+bytes_per_map);
+			
 			int lenght, topic, word;
 			PoissonDistribution poisson;
 			Multinomial multinomial1;
@@ -324,7 +329,6 @@ public class LDATextGenerator extends Configured {
 		FileOutputFormat.setOutputPath(job, fout);
 		
 		log.info("Running Job: Create LDA-text data");
-		//log.info("Dummy file " + dummy.getPath() + " as input");
 		log.info("Data output " + fout + "");
 		Date startTime = new Date();
 	    log.info("Job started: " + startTime);
@@ -339,7 +343,7 @@ public class LDATextGenerator extends Configured {
 
 	public void generate() throws IOException, URISyntaxException, ClassNotFoundException, InterruptedException {
 		
-		log.info("Generating LDA-text data files... HELLOOOO");
+		log.info("Generating LDA-text data files...");
 		init();
 		createLDAText();
 		closeGenerator();
