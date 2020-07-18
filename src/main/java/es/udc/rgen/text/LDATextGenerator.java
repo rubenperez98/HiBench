@@ -264,7 +264,7 @@ public class LDATextGenerator extends Configured {
 			poisson = new PoissonDistribution(words_line);
 			multinomial1 = new Multinomial(random_seed,theta);
 			for (int i=0; i<topics_num; i++) {
-				multinomiali[i] = new Multinomial(random_seed,beta[i]);;
+				multinomiali[i] = new Multinomial(random_seed,beta[i]);
 			}
 			
 			for (long size_i=0; cont && size_i<lines ; size_i++) {
@@ -339,7 +339,7 @@ public class LDATextGenerator extends Configured {
 
 	public void generate() throws IOException, URISyntaxException, ClassNotFoundException, InterruptedException {
 		
-		log.info("Generating LDA-text data files...");
+		log.info("Generating LDA-text data files... HELLOOOO");
 		init();
 		createLDAText();
 		closeGenerator();
