@@ -269,7 +269,9 @@ public class LDATextGenerator extends Configured {
 			poisson = new PoissonDistribution(words_line);
 			multinomial1 = new Multinomial(random_seed,theta);
 			for (int i=0; i<topics_num; i++) {
+				log.info("--------------------------------------> "+i);
 				multinomiali[i] = new Multinomial(random_seed,beta[i]);
+				log.info("--------------------------------------> "+i);
 			}
 			
 			for (long size_i=0; cont && size_i<lines ; size_i++) {
