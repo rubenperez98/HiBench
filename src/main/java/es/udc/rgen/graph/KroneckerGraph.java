@@ -258,7 +258,7 @@ public class KroneckerGraph {
 					
 					prob=random.nextDouble();
 					n=0;
-					while(prob>=probMatrix[n].getProb()) { n++;}
+					while(prob>probMatrix[n].getProb()) { n++;}
 					
 					auxRow=probMatrix[n].getRow();
 					auxCol=probMatrix[n].getCol();

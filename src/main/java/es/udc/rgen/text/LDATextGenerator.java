@@ -244,12 +244,6 @@ public class LDATextGenerator extends Configured {
 		
 		public void map(Text key, Text value, Context context) throws IOException,InterruptedException {
 			
-			log.info("LINES: "+lines);
-			log.info("WORDS_LINE: "+words_line);
-			log.info("TOPICS_NUM: "+topics_num);
-			log.info("ALPHA: "+alpha);
-			log.info("BYTES_MAP: "+bytes_per_map);
-			
 			int lenght, topic, word;
 			PoissonDistribution poisson;
 			Multinomial multinomial1;
@@ -269,9 +263,7 @@ public class LDATextGenerator extends Configured {
 			poisson = new PoissonDistribution(words_line);
 			multinomial1 = new Multinomial(random_seed,theta);
 			for (int i=0; i<topics_num; i++) {
-				log.info("--------------------------------------> "+i);
 				multinomiali[i] = new Multinomial(random_seed,beta[i]);
-				log.info("--------------------------------------> "+i);
 			}
 			
 			for (long size_i=0; cont && size_i<lines ; size_i++) {
@@ -331,6 +323,13 @@ public class LDATextGenerator extends Configured {
 		FileOutputFormat.setOutputPath(job, fout);
 		
 		log.info("Running Job: Create LDA-text data");
+		
+		log.info("LINES: "+conf.getLong(LINES, 0));
+		log.info("WORDS_LINE: "+conf.getInt(WORDS_PER_LINE, 0));
+		log.info("TOPICS_NUM: "+conf.getInt(NUM_TOPICS, 0));
+		log.info("ALPHA: "+conf.getDouble(ALPHA, 1));
+		log.info("BYTES_MAP: "+conf.getLong(BYTES_PER_MAP, 0));
+		
 		log.info("Data output " + fout + "");
 		Date startTime = new Date();
 	    log.info("Job started: " + startTime);
