@@ -42,6 +42,10 @@ public class KroneckerGraph {
 	public static final String DELIMETER = "mapreduce.output.textoutputformat.separator";
 	public static final String ITERATIONS = "mapreduce.kroneckergraph.k";
 	
+	public static final String SEED_MATRIX_DIMENSION = "mapreduce.kroneckergraph.seeddim";
+	public static final String SEED_MATRIX_SUM = "mapreduce.kroneckergraph.seedsum";
+	public static final String SEED_MATRIX = "mapreduce.kroneckergraph.seedxy";
+	
 	private DataOptions options;
 
 	private static final String NODES_DIR_NAME = "nodes";
@@ -51,14 +55,12 @@ public class KroneckerGraph {
 	private int k = 1;
 	private long nodes = 0;
 	private long edges = 0;
-	private double sumProbSeedMatrix = 0;
 	
 	// Facebook graph seed matrix
-    private static double[][] seedMatrix = {{0.9999 , 0.5887},{0.6254 , 0.3676}};
+    private double[][] seedMatrix = {{0.9999 , 0.5887},{0.6254 , 0.3676}};
+    private double sumSeedMatrix = 0.0;
 	
-	private static Cell probMatrix[];
-	
-	private static Random random = new Random(System.currentTimeMillis());
+	private static final Random random = new Random(System.currentTimeMillis());
 
 	private Dummy dummy;
 
@@ -95,8 +97,8 @@ public class KroneckerGraph {
 			} else if ("-k".equals(args[i])) {
 				k = Integer.parseInt(args[++i]);
 			} else if ("-s".equals(args[i])) {
-				int seed = Integer.parseInt(args[++i]);
-				random  = new Random(seed);
+				//int seed = Integer.parseInt(args[++i]);
+				//random  = new Random(seed);
 			} else {
 				DataOptions.printUsage("Unknown Kronecker-graph data arguments --> " + args[i] + " <--");
 			}
@@ -148,9 +150,12 @@ public class KroneckerGraph {
 		for (int i = 0;i<seedMatrix.length;i++) {
 			for (int j=0;j<seedMatrix[i].length;j++) {
 				sum += seedMatrix[i][j];
+				job.setDouble(SEED_MATRIX.concat(String.valueOf(i)).concat(String.valueOf(j)), seedMatrix[i][j]);
 			}
 		}
-		sumProbSeedMatrix = sum;
+		sumSeedMatrix = sum;
+		job.setDouble(SEED_MATRIX_SUM, sumSeedMatrix);
+		job.setInt(SEED_MATRIX_DIMENSION, seedMatrix.length);
 		
 		edges = (long) Math.ceil(Math.pow(sum,k));
 		
@@ -162,19 +167,13 @@ public class KroneckerGraph {
 	}
 	
 	private void setKroneckerEdgesOptions(JobConf job) throws URISyntaxException {
-		probMatrix=new Cell[(int) Math.pow(seedMatrix.length,2)];
-		double cumProb = 0.0;
-		int i = 0;
-		for (int r=0;r<seedMatrix.length;r++) {
-			for (int c=0;c<seedMatrix[r].length;c++) {
-				double prob = seedMatrix[r][c];
-				if (prob > 0.0) {
-					cumProb += prob;
-					probMatrix[i]=new Cell(cumProb/sumProbSeedMatrix,r,c);
-					i++;
-				}
+		for (int i = 0;i<seedMatrix.length;i++) {
+			for (int j=0;j<seedMatrix[i].length;j++) {
+				job.setDouble(SEED_MATRIX.concat(String.valueOf(i)).concat(String.valueOf(j)), seedMatrix[i][j]);
 			}
 		}
+		job.setDouble(SEED_MATRIX_SUM, sumSeedMatrix);
+		job.setInt(SEED_MATRIX_DIMENSION, seedMatrix.length);
 		
 		job.setLong(NUM_NODES, nodes);
 		job.setLong(NUM_EDGES, edges);
@@ -230,13 +229,34 @@ public class KroneckerGraph {
 	public static class DummyToEdgesMapper extends MapReduceBase implements
 	Mapper<LongWritable, Text, Cell, IntWritable> {
 
-		private int k;
+		private int k, seed_matrix_dim;
 		private long edges_map, nodes;
+		private double seed_matrix_sum;
+		
+		private Cell probMatrix[];
 
 		private void getOptions(JobConf job) {
 			nodes = job.getLong(NUM_NODES, 0);
 			edges_map = job.getLong(EDGES_PER_MAP, 0);
 			k = job.getInt(ITERATIONS, 0);
+			seed_matrix_dim = job.getInt(SEED_MATRIX_DIMENSION, 0);
+			seed_matrix_sum = job.getDouble(SEED_MATRIX_SUM, 0);
+			
+			
+			probMatrix=new Cell[(int) Math.pow(seed_matrix_dim,2)];
+			double cumProb = 0.0;
+			int i = 0;
+			for (int r=0;r<seed_matrix_dim;r++) {
+				for (int c=0;c<seed_matrix_dim;c++) {
+					double prob = job.getDouble(SEED_MATRIX.concat(String.valueOf(r)).concat(String.valueOf(c)), 0);
+					log.info("-----------------------------> SEED MATRIX ("+r+c+") --> "+job.getDouble(SEED_MATRIX.concat(String.valueOf(r)).concat(String.valueOf(c)), 0));
+					if (prob > 0.0) {
+						cumProb += prob;
+						probMatrix[i]=new Cell(cumProb/seed_matrix_sum,r,c);
+						i++;
+					}
+				}
+			}
 		}
 
 		public void configure(JobConf job) {
@@ -263,7 +283,7 @@ public class KroneckerGraph {
 					auxRow=probMatrix[n].getRow();
 					auxCol=probMatrix[n].getCol();
 					
-					rng/=seedMatrix.length;
+					rng/=seed_matrix_sum;
 					row+=auxRow*rng;
 					col+=auxCol*rng;
 				}
