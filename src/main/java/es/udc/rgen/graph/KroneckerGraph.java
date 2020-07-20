@@ -164,6 +164,8 @@ public class KroneckerGraph {
 		
 		long nodes_map = (long) Math.ceil(nodes * 1.0 / options.getNumMaps());
 		job.setLong(NODES_PER_MAP, nodes_map);
+		
+		job.setInt(ITERATIONS, k);
 	}
 	
 	private void setKroneckerEdgesOptions(JobConf job) throws URISyntaxException {
@@ -249,7 +251,7 @@ public class KroneckerGraph {
 			for (int r=0;r<seed_matrix_dim;r++) {
 				for (int c=0;c<seed_matrix_dim;c++) {
 					double prob = job.getDouble(SEED_MATRIX.concat(String.valueOf(r)).concat(String.valueOf(c)), 0);
-					log.info("-----------------------------> SEED MATRIX ("+r+c+") --> "+job.getDouble(SEED_MATRIX.concat(String.valueOf(r)).concat(String.valueOf(c)), 0));
+					//log.info("-----------------------------> SEED MATRIX ("+r+c+") --> "+job.getDouble(SEED_MATRIX.concat(String.valueOf(r)).concat(String.valueOf(c)), 0));
 					if (prob > 0.0) {
 						cumProb += prob;
 						probMatrix[i]=new Cell(cumProb/seed_matrix_sum,r,c);
