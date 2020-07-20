@@ -324,11 +324,11 @@ public class LDATextGenerator extends Configured {
 		
 		log.info("Running Job: Create LDA-text data");
 		
-		log.info("LINES: "+conf.getLong(LINES, 0));
-		log.info("WORDS_LINE: "+conf.getInt(WORDS_PER_LINE, 0));
-		log.info("TOPICS_NUM: "+conf.getInt(NUM_TOPICS, 0));
-		log.info("ALPHA: "+conf.getDouble(ALPHA, 1));
-		log.info("BYTES_MAP: "+conf.getLong(BYTES_PER_MAP, 0));
+//		log.info("LINES: "+conf.getLong(LINES, 0));
+//		log.info("WORDS_LINE: "+conf.getInt(WORDS_PER_LINE, 0));
+//		log.info("TOPICS_NUM: "+conf.getInt(NUM_TOPICS, 0));
+//		log.info("ALPHA: "+conf.getDouble(ALPHA, 1));
+//		log.info("BYTES_MAP: "+conf.getLong(BYTES_PER_MAP, 0));
 		
 		log.info("Data output " + fout + "");
 		Date startTime = new Date();
