@@ -224,13 +224,13 @@ public class DataOptions {
 		
 		System.out.println("LDA TEXT:");
 		System.out.println("-t ldatext -i <input_model> [-p <bytes>] "
-				+ "[-l <lines>] [-wl <~words/line>] [-s <seed>] "
+				+ "[-l <lines>] [-wl <~words/line>] "
 				+ "[-b <base path>] [-n <data name>] "
 				+ "[-m <num maps>]\n");
 		
 		System.out.println("KRONECKER:");
 		System.out.println("-t kronecker -k <iterations> "
-				+ "[-sm <seed matrix ([value11,value12...;value21,value22...;...])>] [-s <seed>] "
+				+ "[-sm <seed matrix ([value11,value12...;value21,value22...;...])>] "
 				+ "[-b <base path>] [-n <data name>] \n"
 				+ "[-m <num maps>] [-r <num reduces>] "
 				+ "[-d cdelim]\n");

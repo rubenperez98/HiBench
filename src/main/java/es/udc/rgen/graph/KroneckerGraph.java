@@ -96,9 +96,6 @@ public class KroneckerGraph {
 				
 			} else if ("-k".equals(args[i])) {
 				k = Integer.parseInt(args[++i]);
-			} else if ("-s".equals(args[i])) {
-				//int seed = Integer.parseInt(args[++i]);
-				//random  = new Random(seed);
 			} else {
 				DataOptions.printUsage("Unknown Kronecker-graph data arguments --> " + args[i] + " <--");
 			}

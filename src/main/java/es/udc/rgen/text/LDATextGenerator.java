@@ -39,6 +39,9 @@ public class LDATextGenerator extends Configured {
 	public static final String DELIMETER = "mapreduce.output.textoutputformat.separator";
 	public static final String NUM_MAPS = "mapreduce.ldatext.nummaps";
 	
+	public static final String BETA = "mapreduce.ldatext.beta";
+	public static final String VOCA = "mapreduce.ldatext.voca";
+	
 	private static final String ALPHAFILE = "final.other";
 	private static final String BETAFILE = "final.beta";
 	private static final String VOCAFILE = ".voca";
@@ -53,13 +56,8 @@ public class LDATextGenerator extends Configured {
 	
 	private int num_topics = 0, num_terms = 0;
 	private Double alpha = 0.0;
-	
-    private static double[][] beta = null;
-    private static String[] voca = null;
-	
-	private static Random random_seed = new Random(System.currentTimeMillis());
 
-	//private Dummy dummy;
+	private static final Random random_seed = new Random(System.currentTimeMillis());
 
 	public LDATextGenerator (Configuration conf, DataOptions options) throws IOException {
 		this.conf=conf;
@@ -75,16 +73,14 @@ public class LDATextGenerator extends Configured {
 				lines = Long.parseLong(args[++i]);
 			} else if ("-wl".equals(args[i])) {
 				words_per_line = Integer.parseInt(args[++i]);
-			} else if ("-s".equals(args[i])) {
-				int seed = Integer.parseInt(args[++i]);
-				random_seed = new Random(seed);
 			} else if ("-i".equals(args[i])) {
 				String input_path_string = args[++i];
 				input_path = new Path(input_path_string);
 				alphafile = new Path(input_path_string,ALPHAFILE);
 				betafile = new Path(input_path_string,BETAFILE);
 				String[] vocafile_name = input_path_string.trim().split("/");
-				vocafile = new Path(input_path_string,vocafile_name[vocafile_name.length-1].concat(VOCAFILE));
+				String voca_path=vocafile_name[vocafile_name.length-1].concat(VOCAFILE);
+				vocafile = new Path(input_path_string,voca_path);
 				if (!Utils.existsPath(input_path) ||
 					!Utils.existsPath(alphafile) ||
 					!Utils.existsPath(betafile) ||
@@ -137,24 +133,9 @@ public class LDATextGenerator extends Configured {
 		
 		inalpha.close();
 		
+		job.setStrings(BETA,betafile.toString());
 		
-		beta = new double[num_topics][num_terms];
-		FSDataInputStream inbeta = fs.open(betafile);
-		for (int j=0; j<num_topics; j++) {
-			String[] beta_topic = inbeta.readLine().trim().split(" ");
-			for (int i=0; i<num_terms; i++) {
-				beta[j][i] = Math.exp(Double.parseDouble(beta_topic[i]));
-			}
-		}
-		inbeta.close();
-		
-		
-		voca = new String[num_terms];
-		FSDataInputStream invoca = fs.open(vocafile);
-		for (int i=0; i<num_terms; i++) {
-			voca[i] = invoca.readLine().trim();
-		}
-		invoca.close();
+		job.setStrings(VOCA,vocafile.toString());
 		
 		fs.close();
 	}
@@ -227,19 +208,50 @@ public class LDATextGenerator extends Configured {
 	
 	static class DummyToTextMapper extends Mapper<Text, Text, Text, Text> {
 
-		private int words_line, topics_num;
+		private int words_line, topics_num, terms_num;
 		private long lines, bytes_per_map;
 		private double alpha;
 		private boolean control_bytes;
+		private String beta_path_string, voca_path_string;
+		private double[][] beta;
+		private String[] voca;
 		
-		public void setup(Context context) {
+		public void setup(Context context) throws IOException {
 			Configuration conf = context.getConfiguration();
 			lines = conf.getLong(LINES, Long.MAX_VALUE);
 			words_line = conf.getInt(WORDS_PER_LINE, 20);
 			topics_num = conf.getInt(NUM_TOPICS, 0);
+			terms_num = conf.getInt(NUM_TERMS, 0);
 			alpha = conf.getDouble(ALPHA, 1);
 			bytes_per_map = conf.getLong(BYTES_PER_MAP, 1024*1024*1024);
 			control_bytes = conf.getBoolean(CONTROL_BYTES, false);
+			
+			beta_path_string = conf.get(BETA);
+			voca_path_string = conf.get(VOCA);
+			
+			FileSystem fs = FileSystem.get(conf);
+			
+			beta = new double[topics_num][terms_num];
+			FSDataInputStream inbeta = fs.open(new Path(beta_path_string));
+			for (int j=0; j<topics_num; j++) {
+				String[] beta_topic = inbeta.readLine().trim().split(" ");
+				for (int i=0; i<terms_num; i++) {
+					beta[j][i] = Math.exp(Double.parseDouble(beta_topic[i]));
+				}
+			}
+			inbeta.close();
+
+			voca = new String[terms_num];
+			FSDataInputStream invoca = fs.open(new Path(voca_path_string));
+			for (int i=0; i<terms_num; i++) {
+				voca[i] = invoca.readLine().trim();
+			}
+			invoca.close();
+			
+			fs.close();
+			
+			//log.info("------------------> BETA FILE IN " + beta_path_string);
+			//log.info("------------------> VOCA FILE IN " + voca_path_string);
 		}
 		
 		public void map(Text key, Text value, Context context) throws IOException,InterruptedException {
