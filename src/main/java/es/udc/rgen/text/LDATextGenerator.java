@@ -215,6 +215,7 @@ public class LDATextGenerator extends Configured {
 		private String beta_path_string, voca_path_string;
 		private double[][] beta;
 		private String[] voca;
+		FileSystem fs;
 		
 		public void setup(Context context) throws IOException {
 			Configuration conf = context.getConfiguration();
@@ -229,7 +230,7 @@ public class LDATextGenerator extends Configured {
 			beta_path_string = conf.get(BETA);
 			voca_path_string = conf.get(VOCA);
 			
-			FileSystem fs = FileSystem.get(conf);
+			fs = FileSystem.get(conf);
 			
 			beta = new double[topics_num][terms_num];
 			FSDataInputStream inbeta = fs.open(new Path(beta_path_string));
@@ -247,8 +248,6 @@ public class LDATextGenerator extends Configured {
 				voca[i] = invoca.readLine().trim();
 			}
 			invoca.close();
-			
-			fs.close();
 			
 			//log.info("------------------> BETA FILE IN " + beta_path_string);
 			//log.info("------------------> VOCA FILE IN " + voca_path_string);
@@ -306,6 +305,8 @@ public class LDATextGenerator extends Configured {
 					cont = false;
 				}
 			}
+			
+			fs.close();
 		}
 	}
 
